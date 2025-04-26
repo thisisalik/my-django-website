@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Your Matches 💘</h2>
+
+{% if matches %}
+  <ul>
+    {% for m in matches %}
+      <li style="margin-bottom: 20px;">
+        <strong>{{ m.user.username }}</strong><br>
+        <strong>Age:</strong> {{ m.age }}<br>
+        <strong>Gender:</strong> {{ m.gender }}<br>
+
+        {% if m.profile_picture %}
+          <img src="{{ m.profile_picture.url }}" width="100"><br>
+        {% endif %}
+
+        <a href="{% url 'message_view' m.id %}">💬 Chat</a> |
+        <a href="{% url 'unmatch' m.id %}">❌ Unmatch</a>
+        <hr>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>You haven’t matched with anyone yet. Keep browsing 🐢</p>
+{% endif %}
+
+<p><a href="/letters/">← Back to letters</a></p>
+{% endblock %}

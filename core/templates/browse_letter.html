@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Browse Letters 💌</h2>
+
+<!-- Filter Form -->
+<form method="get" style="margin-bottom: 20px;">
+  {{ form.as_p }}
+  <button type="submit">Apply Filters</button>
+</form>
+
+{% if letter %}
+  <!-- Show letter based on type -->
+  {% if letter.letter_type == "text" %}
+    <p>{{ letter.text_content }}</p>
+  {% elif letter.letter_type == "image" %}
+    <img src="{{ letter.image.url }}" width="300">
+  {% elif letter.letter_type == "pdf" %}
+    <a href="{{ letter.pdf.url }}" target="_blank">Download PDF Letter</a>
+  {% endif %}
+
+  <!-- Like / Skip buttons -->
+  <form method="post" action="{% url 'react_to_letter' letter.id %}">
+    {% csrf_token %}
+    <button name="liked" value="true">❤️ Like</button>
+    <button name="liked" value="false">❌ Skip</button>
+  </form>
+{% else %}
+  <p>No more letters available. Try changing your filters.</p>
+{% endif %}
+
+{% endblock %}
+

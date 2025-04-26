@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Likes You 🐢</h2>
+
+{% if likes %}
+  {% for like in likes %}
+    <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
+      <p><strong>{{ like.from_profile.user.username }}</strong></p>
+      <p>Age: {{ like.from_profile.age }} | Gender: {{ like.from_profile.gender }}</p>
+      {% if like.from_profile.profile_picture %}
+        <img src="{{ like.from_profile.profile_picture.url }}" width="100" />
+      {% endif %}
+
+      <h4>Letter 💌</h4>
+      {% with letter=like.from_profile.letter_set.first %}
+        {% if letter.letter_type == "text" %}
+          <p>{{ letter.text_content }}</p>
+        {% elif letter.letter_type == "image" %}
+          <img src="{{ letter.image.url }}" width="200" />
+        {% elif letter.letter_type == "pdf" %}
+          <a href="{{ letter.pdf.url }}">View PDF Letter</a>
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" action="{% url 'like_back' like.from_profile.id %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit">❤️ Like Back</button>
+      </form>
+      <form method="post" action="{% url 'reject_like' like.from_profile.id %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit">❌ Skip</button>
+      </form>
+    </div>
+  {% endfor %}
+{% else %}
+  <p>No one has liked you yet. Be patient 🐢</p>
+{% endif %}
+{% endblock %}

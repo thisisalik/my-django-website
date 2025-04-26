@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>My Profile 👤</h2>
+
+<p><strong>Name:</strong> {{ request.user.username }}</p>
+<p><strong>Email:</strong> {{ request.user.email }}</p>
+<p><strong>Age:</strong> {{ profile.age }}</p>
+<p><strong>Gender:</strong> {{ profile.gender }}</p>
+<p><strong>Preferred Gender:</strong> {{ profile.preferred_gender }}</p>
+<p><strong>Preferred Age:</strong> {{ profile.preferred_age_min }} - {{ profile.preferred_age_max }}</p>
+
+{% if profile.profile_picture %}
+  <p><img src="{{ profile.profile_picture.url }}" width="150" /></p>
+{% endif %}
+
+<hr>
+
+{% with letter=profile.letter_set.first %}
+  {% if letter %}
+    <h3>Your Letter 💌</h3>
+
+    {% if letter.letter_type == "text" %}
+      <p>{{ letter.text_content }}</p>
+    {% elif letter.letter_type == "image" and letter.image %}
+      <img src="{{ letter.image.url }}" width="300" />
+    {% elif letter.letter_type == "pdf" and letter.pdf %}
+      <a href="{{ letter.pdf.url }}">Download your PDF</a>
+    {% endif %}
+
+    <p>
+      <a href="{% url 'edit_letter' %}">✏️ Edit Letter</a> |
+      <a href="{% url 'delete_letter' %}">❌ Delete Letter</a>
+    </p>
+
+  {% else %}
+    <h3>You haven’t uploaded a letter yet 💌</h3>
+    <p><a href="{% url 'upload_letter' %}">➕ Upload one now</a></p>
+  {% endif %}
+{% endwith %}
+
+<p><a href="{% url 'edit_profile' %}">✏️ Edit Profile</a></p>
+{% endblock %}

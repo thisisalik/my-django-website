@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Upload Your Letter 💌</h2>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <label for="id_letter_type">Letter Type:</label><br>
+  {{ form.letter_type }}
+  <br><br>
+
+  <div id="text_field">
+    <label for="id_text_content">Text Content:</label><br>
+    {{ form.text_content }}
+  </div>
+
+  <div id="image_field">
+    <label for="id_image">Image:</label><br>
+    {{ form.image }}
+  </div>
+
+  <div id="pdf_field">
+    <label for="id_pdf">PDF:</label><br>
+    {{ form.pdf }}
+  </div>
+
+  <br>
+  <button type="submit">📤 Upload Letter</button>
+</form>
+
+<p><a href="{% url 'view_profile' %}">← Back to Profile</a></p>
+
+<script>
+  const letterTypeSelect = document.getElementById("id_letter_type");
+  const textField = document.getElementById("text_field");
+  const imageField = document.getElementById("image_field");
+  const pdfField = document.getElementById("pdf_field");
+
+  function toggleFields() {
+    const value = letterTypeSelect.value;
+    textField.style.display = (value === "text") ? "block" : "none";
+    imageField.style.display = (value === "image") ? "block" : "none";
+    pdfField.style.display = (value === "pdf") ? "block" : "none";
+  }
+
+  // Call on page load
+  toggleFields();
+  // Call when user changes letter type
+  letterTypeSelect.addEventListener("change", toggleFields);
+</script>
+{% endblock %}
