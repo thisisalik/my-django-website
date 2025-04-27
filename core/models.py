@@ -1,6 +1,4 @@
 from django.db import models
-
-from django.db import models
 from django.contrib.auth.models import User
 
 class Profile(models.Model):
@@ -11,13 +9,17 @@ class Profile(models.Model):
     preferred_gender = models.CharField(max_length=20, blank=True, null=True)
     preferred_age_min = models.IntegerField(blank=True, null=True)
     preferred_age_max = models.IntegerField(blank=True, null=True)
+
 class Letter(models.Model):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE)
     letter_type = models.CharField(max_length=10, choices=[('text', 'Text'), ('image', 'Image'), ('pdf', 'PDF')])
-    text_content = models.TextField(blank=True)
-    image = models.ImageField(upload_to='letters/', blank=True, null=True)
-    pdf = models.FileField(upload_to='letters/', blank=True, null=True)
+    text_content = models.TextField(blank=True, null=True)
+    pdf = models.FileField(upload_to='letters/pdf/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class LetterImage(models.Model):
+    letter = models.ForeignKey(Letter, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='letters/images/')
 
 class LetterLike(models.Model):
     from_profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='from_likes')

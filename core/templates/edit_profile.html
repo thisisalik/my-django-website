@@ -1,13 +1,48 @@
 {% extends 'base.html' %}
-
 {% block content %}
-<h2>Edit Your Profile 🛠️</h2>
 
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Save</button>
+<h2>Edit Your Profile ✏️</h2>
+
+<form method="POST" enctype="multipart/form-data" style="margin-bottom: 30px;">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">💾 Save Profile Changes</button>
 </form>
 
-<p><a href="/browse/">← Back to browsing</a></p>
+<hr>
+
+<h2>Manage Your Letters 💌</h2>
+
+{% if letters %}
+    {% for letter in letters %}
+        <div style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 10px;">
+            {% if letter.letter_type == "text" %}
+                <p>📝 {{ letter.text_content|linebreaksbr }}</p>
+            {% elif letter.letter_type == "image" %}
+                {% for img in letter.images.all %}
+                    <img src="{{ img.image.url }}" alt="Letter Image" style="max-width:200px; border-radius:8px; margin-bottom: 10px;">
+                {% endfor %}
+            {% elif letter.letter_type == "pdf" %}
+                <p>📄 <a href="{{ letter.pdf.url }}" target="_blank">View PDF Letter</a></p>
+            {% endif %}
+            
+            <br><br>
+            <a href="{% url 'edit_letter' letter.id %}" class="btn btn-sm btn-primary">✏️ Edit Letter</a>
+            <a href="{% url 'delete_letter' letter.id %}" class="btn btn-sm btn-danger" 
+               onclick="return confirm('Are you sure you want to delete this letter?');">
+               ❌ Delete Letter
+            </a>
+        </div>
+    {% endfor %}
+{% else %}
+    <p>You have no letters uploaded yet.</p>
+
+    <!-- 🧠 Only if NO letters uploaded -->
+    <br>
+    <a href="{% url 'upload_letter' %}" class="btn btn-primary">➕ Upload New Letter</a>
+{% endif %}
+
+<br><br>
+<a href="{% url 'view_profile' %}" class="btn btn-secondary">← Back to Profile</a>
+
 {% endblock %}

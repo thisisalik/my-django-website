@@ -1,12 +1,55 @@
-{% extends 'base.html' %}
-{% block content %}
-<h2>Edit Your Letter 💌</h2>
+<h2>Manage Your Letters 💌</h2>
 
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Save Changes</button>
-</form>
+{% if letters %}
+    {% for letter in letters %}
+        <div style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 10px;">
+            
+            {% if letter.letter_type == "text" %}
+                <p>📝 {{ letter.text_content|linebreaksbr }}</p>
 
-<p><a href="{% url 'view_profile' %}">← Back to Profile</a></p>
-{% endblock %}
+                <br>
+                <a href="{% url 'edit_letter' letter.id %}" class="btn btn-sm btn-primary">✏️ Edit Letter</a>
+                <a href="{% url 'delete_letter' letter.id %}" class="btn btn-sm btn-danger">❌ Delete Letter</a>
+
+            {% elif letter.letter_type == "image" %}
+                {% if letter.images.exists %}
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                        {% for img in letter.images.all %}
+                            <div style="position: relative; display: inline-block;">
+                                <img src="{{ img.image.url }}" alt="Letter Image" 
+                                     style="max-width: 200px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.2);">
+                                <a href="{% url 'delete_letter_image' img.id %}" 
+                                   onclick="return confirm('Are you sure you want to delete this image?');"
+                                   style="position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); 
+                                   color: white; border-radius: 50%; padding: 3px 7px; text-decoration: none; 
+                                   font-weight: bold; font-size: 14px;">
+                                   x
+                                </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <br>
+                    <a href="{% url 'add_letter_images' letter.id %}" class="btn btn-sm btn-success">➕ Add More Images</a>
+
+                {% else %}
+                    <p><em>No images uploaded yet.</em></p>
+                {% endif %}
+            {% elif letter.letter_type == "pdf" %}
+                {% if letter.pdf %}
+                    <p>📄 <a href="{{ letter.pdf.url }}" target="_blank">View PDF Letter</a></p>
+
+                    <br>
+                    <a href="{% url 'edit_letter' letter.id %}" class="btn btn-sm btn-primary">✏️ Edit Letter</a>
+                    <a href="{% url 'delete_letter' letter.id %}" class="btn btn-sm btn-danger">❌ Delete Letter</a>
+                {% else %}
+                    <p><em>No PDF uploaded yet.</em></p>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endfor %}
+{% else %}
+    <p>You have no letters uploaded yet.</p>
+    <br>
+    <a href="{% url 'upload_letter' %}" class="btn btn-success">➕ Upload Your First Letter</a>
+{% endif %}

@@ -3,16 +3,38 @@ from .models import Letter, Message, Profile
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
+from django import forms
+from .models import Letter, LetterImage, Message, Profile
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
+
 class LetterForm(forms.ModelForm):
     class Meta:
         model = Letter
-        fields = ['letter_type', 'text_content', 'image', 'pdf']
+        fields = ['letter_type', 'text_content', 'pdf']
 
     def __init__(self, *args, **kwargs):
         super(LetterForm, self).__init__(*args, **kwargs)
         self.fields['text_content'].widget = forms.Textarea(attrs={'rows': 4})
-        self.fields['image'].widget = forms.ClearableFileInput(attrs={'style': 'display:none;'})
-        self.fields['pdf'].widget = forms.ClearableFileInput(attrs={'style': 'display:none;'})
+        self.fields['letter_type'].required = False  # 🛠️ 🔥 Make letter_type optional when editing
+
+    def clean(self):
+        cleaned_data = super().clean()
+        letter_type = cleaned_data.get('letter_type')
+        text_content = cleaned_data.get('text_content')
+        pdf = cleaned_data.get('pdf')
+
+        if not letter_type:
+            return cleaned_data  # 🧠 skip strict validation if editing
+
+        if letter_type == 'text':
+            if not text_content:
+                raise forms.ValidationError('You selected Text, but did not write anything.')
+        elif letter_type == 'pdf':
+            if not pdf:
+                raise forms.ValidationError('You selected PDF, but did not upload a file.')
+
+        return cleaned_data
 
 class MessageForm(forms.ModelForm):
     class Meta:
@@ -99,3 +121,7 @@ class FullRegisterForm(UserCreationForm):
         if commit:
             user.save()
         return user
+class LetterImageForm(forms.ModelForm):
+    class Meta:
+        model = LetterImage
+        fields = ['image']

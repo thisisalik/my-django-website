@@ -11,11 +11,18 @@ urlpatterns = [
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('register/', views.register, name='register'),
     path('profile/', views.view_profile, name='view_profile'),
-    path('letter/edit/', views.edit_letter, name='edit_letter'),
-    path('letter/delete/', views.delete_letter, name='delete_letter'),
+
+    # ✅ Letter edit/delete
+    path('letter/edit/<int:letter_id>/', views.edit_letter, name='edit_letter'),
+    path('letter/delete/<int:letter_id>/', views.delete_letter, name='delete_letter'),
+
+    # ✅ Likes and matches
     path('likes/', views.likes_received, name='likes_received'),
     path('like_back/<int:profile_id>/', views.like_back, name='like_back'),
     path('reject_like/<int:profile_id>/', views.reject_like, name='reject_like'),
     path('unmatch/<int:profile_id>/', views.unmatch, name='unmatch'),
 
+    # ✅ Images
+    path('letter/image/delete/<int:image_id>/', views.delete_letter_image, name='delete_letter_image'),
+    path('letter/add_images/<int:letter_id>/', views.add_letter_images, name='add_letter_images'),  # ➕ New!
 ]

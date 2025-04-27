@@ -4,49 +4,48 @@
 <h2>Upload Your Letter 💌</h2>
 
 <form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
+    {% csrf_token %}
 
-  <label for="id_letter_type">Letter Type:</label><br>
-  {{ form.letter_type }}
-  <br><br>
+    <label for="id_letter_type">Letter Type:</label><br>
+    {{ form.letter_type }}
+    <br><br>
 
-  <div id="text_field">
-    <label for="id_text_content">Text Content:</label><br>
-    {{ form.text_content }}
-  </div>
+    <div id="text_content_div" style="display:none;">
+        <label for="id_text_content">Text Content:</label><br>
+        {{ form.text_content }}
+    </div>
 
-  <div id="image_field">
-    <label for="id_image">Image:</label><br>
-    {{ form.image }}
-  </div>
+    <div id="image_upload_div" style="display:none;">
+        <label for="images">Upload Images:</label><br>
+        <input type="file" name="images" multiple>
+    </div>
 
-  <div id="pdf_field">
-    <label for="id_pdf">PDF:</label><br>
-    {{ form.pdf }}
-  </div>
+    <div id="pdf_upload_div" style="display:none;">
+        <label for="id_pdf">Upload PDF:</label><br>
+        {{ form.pdf }}
+    </div>
 
-  <br>
-  <button type="submit">📤 Upload Letter</button>
+    <br>
+    <button type="submit" class="btn btn-primary">📤 Upload Letter</button>
 </form>
 
-<p><a href="{% url 'view_profile' %}">← Back to Profile</a></p>
+<br>
+<a href="{% url 'view_profile' %}" class="btn btn-secondary">← Back to Profile</a>
 
 <script>
-  const letterTypeSelect = document.getElementById("id_letter_type");
-  const textField = document.getElementById("text_field");
-  const imageField = document.getElementById("image_field");
-  const pdfField = document.getElementById("pdf_field");
+    const letterTypeSelect = document.getElementById('id_letter_type');
+    const textDiv = document.getElementById('text_content_div');
+    const imageDiv = document.getElementById('image_upload_div');
+    const pdfDiv = document.getElementById('pdf_upload_div');
 
-  function toggleFields() {
-    const value = letterTypeSelect.value;
-    textField.style.display = (value === "text") ? "block" : "none";
-    imageField.style.display = (value === "image") ? "block" : "none";
-    pdfField.style.display = (value === "pdf") ? "block" : "none";
-  }
+    function toggleUploadFields() {
+        const choice = letterTypeSelect.value;
+        textDiv.style.display = (choice === 'text') ? 'block' : 'none';
+        imageDiv.style.display = (choice === 'image') ? 'block' : 'none';
+        pdfDiv.style.display = (choice === 'pdf') ? 'block' : 'none';
+    }
 
-  // Call on page load
-  toggleFields();
-  // Call when user changes letter type
-  letterTypeSelect.addEventListener("change", toggleFields);
+    letterTypeSelect.addEventListener('change', toggleUploadFields);
+    toggleUploadFields();  // Call once at page load
 </script>
 {% endblock %}
