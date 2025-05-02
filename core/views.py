@@ -173,7 +173,10 @@ def edit_profile(request):
 
     return render(request, 'edit_profile.html', {'form': form, 'letters': letters})
 # 🧠 Register View
+# 🧠 Register View
 def register(request):
+    ages = range(18, 101)
+
     if request.method == 'POST':
         form = FullRegisterForm(request.POST, request.FILES)
         if form.is_valid():
@@ -191,26 +194,14 @@ def register(request):
             profile.preferred_age_max = form.cleaned_data.get('preferred_age_max')
             profile.save()
 
-            letter_type = form.cleaned_data.get('letter_type')
-            if letter_type:
-                letter = Letter.objects.create(
-                    profile=profile,
-                    letter_type=letter_type,
-                    text_content=form.cleaned_data.get('text_content', ''),
-                    pdf=form.cleaned_data.get('pdf')
-                )
-
-                # ✅ Save images if letter is image-type
-                if letter_type == 'image':
-                    for img in request.FILES.getlist('images'):
-                        LetterImage.objects.create(letter=letter, image=img)
-
+            # ✅ Letter uploading is now optional, removed from form
             login(request, user)
             return redirect('browse_letter')
+        else:
+            return render(request, 'register.html', {'form': form, 'ages': ages})
     else:
         form = FullRegisterForm()
-
-    return render(request, 'register.html', {'form': form})
+        return render(request, 'register.html', {'form': form, 'ages': ages})
 
 # 🧠 View Profile
 @login_required

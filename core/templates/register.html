@@ -1,13 +1,116 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static %}
 
 {% block content %}
+<style>
+  nav, .navbar, header {
+    display: none !important;
+  }
+</style>
+
 <h2>Create Account</h2>
 
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Register</button>
+  {{ form.non_field_errors }}
+
+  <p><label for="id_name">Name:</label> {{ form.name }}</p>
+  <p><label for="id_email">Email:</label> {{ form.email }}</p>
+  <p><label for="id_password1">Password:</label> {{ form.password1 }}</p>
+  <p><label for="id_password2">Confirm Password:</label> {{ form.password2 }}</p>
+
+  <p><label for="id_age">Age:</label>
+    <select name="age" id="id_age">
+      {% for age in ages %}
+        <option value="{{ age }}">{{ age }}</option>
+      {% endfor %}
+    </select>
+  </p>
+
+  <p><label for="id_gender">Gender:</label> {{ form.gender }}</p>
+  <p><label for="id_profile_picture">Profile picture:</label> {{ form.profile_picture }}</p>
+
+  <p><label for="id_preferred_gender">Preferred Gender:</label> {{ form.preferred_gender }}</p>
+
+  <p><label for="id_preferred_age_min">Preferred Minimum Age:</label>
+    <select name="preferred_age_min" id="id_preferred_age_min">
+      {% for age in ages %}
+        <option value="{{ age }}">{{ age }}</option>
+      {% endfor %}
+    </select>
+  </p>
+
+  <p><label for="id_preferred_age_max">Preferred Maximum Age:</label>
+    <select name="preferred_age_max" id="id_preferred_age_max">
+      {% for age in ages %}
+        <option value="{{ age }}">{{ age }}</option>
+      {% endfor %}
+    </select>
+  </p>
+
+  <!-- ✅ Add Your Letter section with toggle -->
+  <p><strong>Add Your Letter:</strong></p>
+  <p>
+    <input type="checkbox" id="skip_upload_checkbox">
+    <label for="skip_upload_checkbox">I’ll upload my letter later</label>
+  </p>
+
+  <div id="letter_upload_section">
+    <p><label for="id_letter_type">Letter Type:</label> {{ form.letter_type }}</p>
+
+    <div id="text_content_div" style="display:none;">
+      <label for="id_text_content">Text Content:</label><br>
+      {{ form.text_content }}
+    </div>
+
+    <div id="image_upload_div" style="display:none;">
+      <label for="images">Upload Images:</label><br>
+      <input type="file" name="images" multiple>
+    </div>
+
+    <div id="pdf_upload_div" style="display:none;">
+      <label for="id_pdf">Upload PDF:</label><br>
+      {{ form.pdf }}
+    </div>
+
+    <br>
+    <button type="submit" class="btn btn-primary">📤 Upload Letter</button>
+  </div>
+
+  <br><br>
+  <!-- ✅ Register button at the very bottom -->
+  <button type="submit" class="btn btn-success">📝 Register</button>
 </form>
 
-<p>Already have an account? <a href="/accounts/login/">Login</a></p>
+<p style="margin-top: 20px;">Already have an account? <a href="/accounts/login/">Login</a></p>
+
+<script>
+  const letterTypeSelect = document.getElementById('id_letter_type');
+  const textDiv = document.getElementById('text_content_div');
+  const imageDiv = document.getElementById('image_upload_div');
+  const pdfDiv = document.getElementById('pdf_upload_div');
+  const skipCheckbox = document.getElementById('skip_upload_checkbox');
+  const letterUploadSection = document.getElementById('letter_upload_section');
+
+  function toggleUploadFields() {
+    const choice = letterTypeSelect.value;
+    textDiv.style.display = (choice === 'text') ? 'block' : 'none';
+    imageDiv.style.display = (choice === 'image') ? 'block' : 'none';
+    pdfDiv.style.display = (choice === 'pdf') ? 'block' : 'none';
+  }
+
+  function toggleLetterUploadVisibility() {
+    letterUploadSection.style.display = skipCheckbox.checked ? 'none' : 'block';
+  }
+
+  if (letterTypeSelect) {
+    letterTypeSelect.addEventListener('change', toggleUploadFields);
+    toggleUploadFields();
+  }
+
+  if (skipCheckbox) {
+    skipCheckbox.addEventListener('change', toggleLetterUploadVisibility);
+    toggleLetterUploadVisibility();
+  }
+</script>
 {% endblock %}
