@@ -17,7 +17,8 @@
 
     <div id="image_upload_div" style="display:none;">
         <label for="images">Upload Images:</label><br>
-        <input type="file" name="images" multiple>
+        <!-- ✅ Multiple image upload field -->
+        <input type="file" name="images" id="id_images" multiple>
     </div>
 
     <div id="pdf_upload_div" style="display:none;">
@@ -46,6 +47,6 @@
     }
 
     letterTypeSelect.addEventListener('change', toggleUploadFields);
-    toggleUploadFields();  // Call once at page load
+    toggleUploadFields();  // Run once at load
 </script>
 {% endblock %}

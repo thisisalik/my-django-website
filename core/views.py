@@ -144,8 +144,6 @@ def message_view(request, profile_id):
         form = MessageForm()
 
     return render(request, 'messages.html', {'receiver': receiver, 'messages': messages_qs, 'form': form})
-
-# 🧠 Edit Profile
 @login_required
 def edit_profile(request):
     profile = request.user.profile
@@ -153,14 +151,27 @@ def edit_profile(request):
 
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES, instance=profile)
+
         if form.is_valid():
             form.save()
+
+            # ✅ Add this block to handle inline letter editing
+            letter_id = request.POST.get('letter_id')
+            new_text = request.POST.get('text_content', '').strip()
+
+            if letter_id and new_text:
+                try:
+                    letter = Letter.objects.get(id=letter_id, profile=profile, letter_type='text')
+                    letter.text_content = new_text
+                    letter.save()
+                except Letter.DoesNotExist:
+                    pass  # No crash if no such letter
+
             return redirect('view_profile')
     else:
         form = ProfileForm(instance=profile)
 
     return render(request, 'edit_profile.html', {'form': form, 'letters': letters})
-
 # 🧠 Register View
 def register(request):
     if request.method == 'POST':
@@ -182,12 +193,17 @@ def register(request):
 
             letter_type = form.cleaned_data.get('letter_type')
             if letter_type:
-                Letter.objects.create(
+                letter = Letter.objects.create(
                     profile=profile,
                     letter_type=letter_type,
                     text_content=form.cleaned_data.get('text_content', ''),
                     pdf=form.cleaned_data.get('pdf')
                 )
+
+                # ✅ Save images if letter is image-type
+                if letter_type == 'image':
+                    for img in request.FILES.getlist('images'):
+                        LetterImage.objects.create(letter=letter, image=img)
 
             login(request, user)
             return redirect('browse_letter')
@@ -215,38 +231,24 @@ def edit_letter(request, letter_id):
     letter = get_object_or_404(Letter, id=letter_id, profile=profile)
 
     if request.method == 'POST':
-        form = LetterForm(request.POST, request.FILES, instance=letter)
+        if letter.letter_type == 'text':
+            text = request.POST.get('text_content', '').strip()
+            print(">>> SUBMITTED:", text)
+            if not text:
+                messages.error(request, "❌ Text cannot be empty.")
+                return redirect('edit_letter', letter_id=letter.id)
+            letter.text_content = text
 
-        if form.is_valid():
-            edited_letter = form.save(commit=False)
+        elif letter.letter_type == 'pdf':
+            if 'pdf' in request.FILES:
+                letter.pdf = request.FILES['pdf']
 
-            # ✅ VERY IMPORTANT: Set the letter_type if it’s missing!
-            if not edited_letter.letter_type:
-                edited_letter.letter_type = 'text'
+        # Save and confirm
+        letter.save()
+        messages.success(request, "✅ Letter updated successfully!")
+        return redirect('view_profile')
 
-            if edited_letter.letter_type == 'text':
-                new_text = form.cleaned_data.get('text_content')
-                if new_text:
-                    edited_letter.text_content = new_text
-                else:
-                    messages.error(request, "❌ Text cannot be empty.")
-                    return redirect('edit_letter', letter_id=letter.id)
-
-            elif edited_letter.letter_type == 'pdf':
-                new_pdf = form.cleaned_data.get('pdf')
-                if new_pdf:
-                    edited_letter.pdf = new_pdf
-
-            edited_letter.save()
-
-            messages.success(request, "✅ Letter updated successfully!")
-            return redirect('view_profile')
-        else:
-            messages.error(request, "❌ Please correct the errors.")
-    else:
-        form = LetterForm(instance=letter)
-
-    return render(request, 'edit_letter.html', {'form': form, 'letter': letter})
+    return render(request, 'edit_letter.html', {'letter': letter})
 
 # 🧠 Delete Letter
 @login_required

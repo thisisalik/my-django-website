@@ -16,23 +16,23 @@ class LetterForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(LetterForm, self).__init__(*args, **kwargs)
         self.fields['text_content'].widget = forms.Textarea(attrs={'rows': 4})
-        self.fields['letter_type'].required = False  # 🛠️ 🔥 Make letter_type optional when editing
+        self.fields['letter_type'].required = False  # optional when editing
+        self.fields['pdf'].required = False           # optional on edit too
 
     def clean(self):
         cleaned_data = super().clean()
-        letter_type = cleaned_data.get('letter_type')
+
+        # 🔥 Always fallback to the instance's letter_type if missing
+        letter_type = cleaned_data.get('letter_type') or getattr(self.instance, 'letter_type', None)
         text_content = cleaned_data.get('text_content')
         pdf = cleaned_data.get('pdf')
 
-        if not letter_type:
-            return cleaned_data  # 🧠 skip strict validation if editing
+        # 💡 Now validate reliably
+        if letter_type == 'text' and not text_content:
+            raise forms.ValidationError('You selected Text, but did not write anything.')
 
-        if letter_type == 'text':
-            if not text_content:
-                raise forms.ValidationError('You selected Text, but did not write anything.')
-        elif letter_type == 'pdf':
-            if not pdf:
-                raise forms.ValidationError('You selected PDF, but did not upload a file.')
+        if letter_type == 'pdf' and not pdf and not getattr(self.instance, 'pdf', None):
+            raise forms.ValidationError('You selected PDF, but did not upload a file.')
 
         return cleaned_data
 
@@ -63,6 +63,7 @@ class LetterFilterForm(forms.Form):
         choices=[('', 'Any'), ('Male', 'Male'), ('Female', 'Female')],
         label='Gender'
     )
+
 
 class FullRegisterForm(UserCreationForm):
     name = forms.CharField(required=True, label="Name")
@@ -102,7 +103,6 @@ class FullRegisterForm(UserCreationForm):
         label="Letter Type (optional)"
     )
     text_content = forms.CharField(widget=forms.Textarea, required=False, label="Letter Text")
-    image = forms.ImageField(required=False)
     pdf = forms.FileField(required=False)
 
     class Meta:
@@ -111,7 +111,7 @@ class FullRegisterForm(UserCreationForm):
             'name', 'email', 'password1', 'password2',
             'age', 'gender', 'profile_picture',
             'preferred_gender', 'preferred_age_min', 'preferred_age_max',
-            'letter_type', 'text_content', 'image', 'pdf',
+            'letter_type', 'text_content', 'pdf',
         ]
 
     def save(self, commit=True):

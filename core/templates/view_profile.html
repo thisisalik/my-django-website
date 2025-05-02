@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
+
 <h2>My Profile 👤</h2>
 
 <p><strong>Name:</strong> {{ profile.user.username }}</p>
@@ -46,8 +47,6 @@
 {% endif %}
 
 <br><br>
-
-<!-- ✏️ Always show Edit Profile -->
 <a href="{% url 'edit_profile' %}" class="btn btn-secondary">✏️ Edit Profile</a>
 
 {% endblock %}
