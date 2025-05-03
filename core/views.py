@@ -11,7 +11,6 @@ from .forms import (
     LetterFilterForm,
     FullRegisterForm
 )
-
 # 🧠 Browse Letters
 @login_required
 def browse_letter(request):
@@ -44,6 +43,14 @@ def browse_letter(request):
 
     seen_ids = LetterLike.objects.filter(from_profile=profile).values_list('to_letter_id', flat=True)
     letters = letters.exclude(id__in=seen_ids)
+
+    # ✅ Filter based on the *letter owner's* preferences toward YOU
+    letters = letters.filter(
+        profile__preferred_gender__in=["Any", profile.gender, None]
+    ).filter(
+        profile__preferred_age_min__lte=profile.age if profile.age else 200,
+        profile__preferred_age_max__gte=profile.age if profile.age else 0
+    )
 
     letter = letters.first()
 
@@ -174,6 +181,7 @@ def edit_profile(request):
     return render(request, 'edit_profile.html', {'form': form, 'letters': letters})
 # 🧠 Register View
 # 🧠 Register View
+# 🧠 Register View
 def register(request):
     ages = range(18, 101)
 
@@ -194,7 +202,24 @@ def register(request):
             profile.preferred_age_max = form.cleaned_data.get('preferred_age_max')
             profile.save()
 
-            # ✅ Letter uploading is now optional, removed from form
+            # ✅ Only create a letter if actual content is provided
+            letter_type = form.cleaned_data.get('letter_type')
+            text_content = form.cleaned_data.get('text_content', '').strip()
+            pdf = form.cleaned_data.get('pdf')
+            images = request.FILES.getlist('images')
+
+            if letter_type and (text_content or pdf or images):
+                letter = Letter.objects.create(
+                    profile=profile,
+                    letter_type=letter_type,
+                    text_content=text_content,
+                    pdf=pdf
+                )
+
+                if letter_type == 'image':
+                    for img in images:
+                        LetterImage.objects.create(letter=letter, image=img)
+
             login(request, user)
             return redirect('browse_letter')
         else:

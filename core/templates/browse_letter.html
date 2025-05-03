@@ -3,20 +3,16 @@
 {% block content %}
 <h2>Browse Letters 💌</h2>
 
-<!-- Filter Form -->
-<form method="get" style="margin-bottom: 20px;">
-  {{ form.as_p }}
-  <button type="submit">Apply Filters</button>
-</form>
-
 {% if letter %}
   <!-- Show letter based on type -->
   {% if letter.letter_type == "text" %}
-    <p>{{ letter.text_content }}</p>
+    <p>{{ letter.text_content|linebreaksbr }}</p>
   {% elif letter.letter_type == "image" %}
-    <img src="{{ letter.image.url }}" width="300">
+    {% for img in letter.images.all %}
+      <img src="{{ img.image.url }}" width="300" style="margin-bottom: 10px; display:block;">
+    {% endfor %}
   {% elif letter.letter_type == "pdf" %}
-    <a href="{{ letter.pdf.url }}" target="_blank">Download PDF Letter</a>
+    <a href="{{ letter.pdf.url }}" target="_blank">📄 Download PDF Letter</a>
   {% endif %}
 
   <!-- Like / Skip buttons -->
@@ -26,8 +22,6 @@
     <button name="liked" value="false">❌ Skip</button>
   </form>
 {% else %}
-  <p>No more letters available. Try changing your filters.</p>
+  <p>No more letters available. Try again later.</p>
 {% endif %}
-
 {% endblock %}
-
