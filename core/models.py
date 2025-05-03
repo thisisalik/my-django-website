@@ -32,6 +32,9 @@ class Match(models.Model):
     user2 = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='match_user2')
     timestamp = models.DateTimeField(auto_now_add=True)
 
+    is_seen_by_user1 = models.BooleanField(default=False)
+    is_seen_by_user2 = models.BooleanField(default=False)
+
     class Meta:
         unique_together = ('user1', 'user2')
 
@@ -40,6 +43,13 @@ class Message(models.Model):
     receiver = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='received_messages')
     text = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)  # ✅ Add this line
 
     def __str__(self):
         return f"From {self.sender.user.username} to {self.receiver.user.username}"
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)

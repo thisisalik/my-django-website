@@ -4,6 +4,8 @@ from django.contrib.auth import login
 from django.contrib import messages
 from django.http import HttpResponseForbidden
 from .models import Letter, LetterImage, Profile, LetterLike, Match, Message
+from django.db.models import Q
+
 from .forms import (
     LetterForm,
     MessageForm,
@@ -11,6 +13,8 @@ from .forms import (
     LetterFilterForm,
     FullRegisterForm
 )
+from .models import Notification
+
 # 🧠 Browse Letters
 @login_required
 def browse_letter(request):
@@ -44,7 +48,6 @@ def browse_letter(request):
     seen_ids = LetterLike.objects.filter(from_profile=profile).values_list('to_letter_id', flat=True)
     letters = letters.exclude(id__in=seen_ids)
 
-    # ✅ Filter based on the *letter owner's* preferences toward YOU
     letters = letters.filter(
         profile__preferred_gender__in=["Any", profile.gender, None]
     ).filter(
@@ -54,10 +57,18 @@ def browse_letter(request):
 
     letter = letters.first()
 
-    if not letter:
-        return render(request, 'no_more_letters.html', {'form': form})
+    unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
+    unseen_matches_count = Match.objects.filter(
+        Q(user1=profile, is_seen_by_user1=False) |
+        Q(user2=profile, is_seen_by_user2=False)
+    ).count()
 
-    return render(request, 'browse_letter.html', {'letter': letter, 'form': form})
+    return render(request, 'browse_letter.html', {
+        'letter': letter,
+        'form': form,
+        'unread_messages_count': unread_messages_count,
+        'unseen_matches_count': unseen_matches_count,
+    })
 
 # 🧠 React to a Letter
 @login_required
@@ -120,7 +131,6 @@ def view_matches(request):
 
     return render(request, 'matches.html', {'matches': matched_profiles})
 
-# 🧠 Message View
 @login_required
 def message_view(request, profile_id):
     sender = request.user.profile
@@ -133,6 +143,13 @@ def message_view(request, profile_id):
 
     if not matched:
         return HttpResponseForbidden("You can only message people you've matched with.")
+
+    # ✅ Mark all messages received from this person as read
+    Message.objects.filter(
+        sender=receiver,
+        receiver=sender,
+        is_read=False
+    ).update(is_read=True)
 
     messages_qs = Message.objects.filter(
         sender__in=[sender, receiver],
@@ -151,6 +168,7 @@ def message_view(request, profile_id):
         form = MessageForm()
 
     return render(request, 'messages.html', {'receiver': receiver, 'messages': messages_qs, 'form': form})
+
 @login_required
 def edit_profile(request):
     profile = request.user.profile
@@ -162,7 +180,6 @@ def edit_profile(request):
         if form.is_valid():
             form.save()
 
-            # ✅ Add this block to handle inline letter editing
             letter_id = request.POST.get('letter_id')
             new_text = request.POST.get('text_content', '').strip()
 
@@ -172,15 +189,25 @@ def edit_profile(request):
                     letter.text_content = new_text
                     letter.save()
                 except Letter.DoesNotExist:
-                    pass  # No crash if no such letter
+                    pass
 
             return redirect('view_profile')
     else:
         form = ProfileForm(instance=profile)
 
-    return render(request, 'edit_profile.html', {'form': form, 'letters': letters})
-# 🧠 Register View
-# 🧠 Register View
+    unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
+    unseen_matches_count = Match.objects.filter(
+        Q(user1=profile, is_seen_by_user1=False) |
+        Q(user2=profile, is_seen_by_user2=False)
+    ).count()
+
+    return render(request, 'edit_profile.html', {
+        'form': form,
+        'letters': letters,
+        'unread_messages_count': unread_messages_count,
+        'unseen_matches_count': unseen_matches_count,
+    })
+
 # 🧠 Register View
 def register(request):
     ages = range(18, 101)
@@ -228,19 +255,25 @@ def register(request):
         form = FullRegisterForm()
         return render(request, 'register.html', {'form': form, 'ages': ages})
 
-# 🧠 View Profile
 @login_required
 def view_profile(request):
     profile = request.user.profile
     letters = Letter.objects.filter(profile=profile)
     has_letter = letters.exists()
 
+    unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
+    unseen_matches_count = Match.objects.filter(
+        Q(user1=profile, is_seen_by_user1=False) |
+        Q(user2=profile, is_seen_by_user2=False)
+    ).count()
+
     return render(request, 'view_profile.html', {
         'profile': profile,
         'letters': letters,
         'has_letter': has_letter,
+        'unread_messages_count': unread_messages_count,
+        'unseen_matches_count': unseen_matches_count,
     })
-
 @login_required
 def edit_letter(request, letter_id):
     profile = request.user.profile
@@ -278,11 +311,11 @@ def delete_letter(request, letter_id):
 
     return render(request, 'confirm_delete_letter.html')
 
-# 🧠 Likes System
 @login_required
 def likes_received(request):
     profile = request.user.profile
 
+    # Find users who liked this profile but haven't been responded to
     likes = LetterLike.objects.filter(
         to_letter__profile=profile,
         liked=True
@@ -290,7 +323,22 @@ def likes_received(request):
         from_profile__in=LetterLike.objects.filter(from_profile=profile).values_list('to_letter__profile', flat=True)
     )
 
-    return render(request, 'likes_received.html', {'likes': likes})
+    # ✅ Count unread messages and unseen matches (for 💬 badge)
+    unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
+    unseen_matches_count = Match.objects.filter(
+        Q(user1=profile, is_seen_by_user1=False) |
+        Q(user2=profile, is_seen_by_user2=False)
+    ).count()
+
+    # ✅ Count new likes (for 🐢 badge)
+    new_likes_count = likes.count()
+
+    return render(request, 'likes_received.html', {
+        'likes': likes,
+        'unread_messages_count': unread_messages_count,
+        'unseen_matches_count': unseen_matches_count,
+        'new_likes_count': new_likes_count,
+    })
 
 @login_required
 def like_back(request, profile_id):
@@ -356,3 +404,53 @@ def add_letter_images(request, letter_id):
         return redirect('edit_profile')
 
     return render(request, 'add_images.html', {'letter': letter})
+
+@login_required
+def notifications_view(request):
+    notifications = Notification.objects.filter(user=request.user).order_by('-timestamp')
+    return render(request, 'notifications.html', {'notifications': notifications})
+
+@login_required
+def matched_profile_view(request, profile_id):
+    matched_profile = get_object_or_404(Profile, id=profile_id)
+    viewer_profile = request.user.profile
+
+    # ✅ Find the match and mark it as seen by the viewer
+    match = Match.objects.filter(
+        user1__in=[viewer_profile, matched_profile],
+        user2__in=[viewer_profile, matched_profile]
+    ).first()
+
+    if match:
+        if match.user1 == viewer_profile and not match.is_seen_by_user1:
+            match.is_seen_by_user1 = True
+            match.save()
+        elif match.user2 == viewer_profile and not match.is_seen_by_user2:
+            match.is_seen_by_user2 = True
+            match.save()
+
+    letter = matched_profile.letter_set.order_by('-created_at').first()
+    return render(request, 'matched_profile.html', {'profile': matched_profile, 'letter': letter})
+
+@login_required
+def chat_list_view(request):
+    profile = request.user.profile
+
+    # Get matched profiles
+    matches = Match.objects.filter(user1=profile) | Match.objects.filter(user2=profile)
+    matched_profiles = [m.user2 if m.user1 == profile else m.user1 for m in matches]
+
+    # ✅ Count unread messages
+    unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
+
+    # ✅ Count unseen matches
+    unseen_matches_count = Match.objects.filter(
+        Q(user1=profile, is_seen_by_user1=False) |
+        Q(user2=profile, is_seen_by_user2=False)
+    ).count()
+
+    return render(request, 'chat_list.html', {
+        'matches': matched_profiles,
+        'unread_messages_count': unread_messages_count,
+        'unseen_matches_count': unseen_matches_count,
+    })

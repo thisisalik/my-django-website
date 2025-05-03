@@ -25,4 +25,8 @@ urlpatterns = [
     # ✅ Images
     path('letter/image/delete/<int:image_id>/', views.delete_letter_image, name='delete_letter_image'),
     path('letter/add_images/<int:letter_id>/', views.add_letter_images, name='add_letter_images'),  # ➕ New!
+    path('notifications/', views.notifications_view, name='notifications'),
+path('matched-profile/<int:profile_id>/', views.matched_profile_view, name='matched_profile'),
+path('chats/', views.chat_list_view, name='chat_list'),
+
 ]
