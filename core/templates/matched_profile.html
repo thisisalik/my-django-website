@@ -1,17 +1,81 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>{{ profile.user.username }}'s Profile</h2>
+
+<div style="display: flex; align-items: center; gap: 15px;">
+  {% if profile.profile_picture %}
+    <a href="{{ profile.profile_picture.url }}" target="_blank">
+      <img src="{{ profile.profile_picture.url }}" alt="Profile Picture"
+           style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+    </a>
+  {% endif %}
+  <h2>{{ profile.user.username }}'s Profile</h2>
+</div>
+
 <p>Age: {{ profile.age }}</p>
 <p>Gender: {{ profile.gender }}</p>
 <p>Letter:</p>
+
 {% if letter.letter_type == 'text' %}
   <p>{{ letter.text_content }}</p>
-{% elif letter.letter_type == 'pdf' %}
-  <a href="{{ letter.pdf.url }}">View PDF</a>
+
 {% else %}
-  {% for image in letter.images.all %}
-    <img src="{{ image.image.url }}" width="200">
-  {% endfor %}
+  {% if letter.letter_type == 'pdf' %}
+    <a href="{{ letter.pdf.url }}" target="_blank">View PDF</a>
+
+  {% else %}
+    {% if letter.letter_type == 'image' and letter.images.exists %}
+      <div style="position: relative; max-width: 400px; margin-top: 10px;">
+        {% with images=letter.images.all %}
+          {% for image in images %}
+            <div style="display: {% if forloop.first %}block{% else %}none{% endif %};" class="slide" id="slide-{{ forloop.counter }}">
+              <img src="{{ image.image.url }}" alt="Letter Image"
+                   style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain;">
+            </div>
+          {% endfor %}
+
+          {% if images|length > 1 %}
+            <button onclick="prevSlide()" id="prevBtn" style="position: absolute; left: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">←</button>
+            <button onclick="nextSlide()" id="nextBtn" style="position: absolute; right: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">→</button>
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      <script>
+        let currentSlide = 1;
+        const totalSlides = {{ letter.images.all|length }};
+
+        function showSlide(n) {
+          for (let i = 1; i <= totalSlides; i++) {
+            const slide = document.getElementById('slide-' + i);
+            if (slide) slide.style.display = i === n ? 'block' : 'none';
+          }
+
+          document.getElementById('prevBtn').style.display = n === 1 ? 'none' : 'block';
+          document.getElementById('nextBtn').style.display = n === totalSlides ? 'none' : 'block';
+        }
+
+        function nextSlide() {
+          if (currentSlide < totalSlides) {
+            currentSlide++;
+            showSlide(currentSlide);
+          }
+        }
+
+        function prevSlide() {
+          if (currentSlide > 1) {
+            currentSlide--;
+            showSlide(currentSlide);
+          }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+          showSlide(currentSlide);
+        });
+      </script>
+    {% endif %}
+  {% endif %}
 {% endif %}
+
 <a href="{% url 'message_view' profile.id %}">Start Chat</a>
+
 {% endblock %}

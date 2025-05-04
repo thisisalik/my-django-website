@@ -37,7 +37,13 @@
       {% endif %}
     </a>
   
-    <a href="/profile/" title="Your Profile" style="text-decoration: none; font-size: 24px;">🧑</a>
+    <a href="/profile/" title="Your Profile" style="text-decoration: none; font-size: 24px;">
+      {% if request.user.is_authenticated and request.user.profile.profile_picture %}
+        <img src="{{ request.user.profile.profile_picture.url }}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+      {% else %}
+        🧑
+      {% endif %}
+    </a>
   
     <form action="/accounts/logout/" method="post" style="margin-left: auto;">
       {% csrf_token %}

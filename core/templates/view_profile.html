@@ -1,7 +1,17 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<h2>My Profile 👤</h2>
+<h2 style="display: flex; align-items: center; gap: 10px;">
+  My Profile
+  {% if profile.profile_picture %}
+    <a href="{{ profile.profile_picture.url }}" target="_blank">
+      <img src="{{ profile.profile_picture.url }}" alt="Profile Picture"
+           style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+    </a>
+  {% else %}
+    👤
+  {% endif %}
+</h2>
 
 <p><strong>Name:</strong> {{ profile.user.username }}</p>
 <p><strong>Email:</strong> {{ profile.user.email }}</p>
@@ -23,20 +33,35 @@
                 {% else %}
                     <p><em>No text available.</em></p>
                 {% endif %}
-            {% elif letter.letter_type == "image" %}
-                {% if letter.images.exists %}
-                    {% for img in letter.images.all %}
-                        <img src="{{ img.image.url }}" alt="Letter Image" style="max-width:200px; border-radius:8px;">
-                    {% endfor %}
-                {% else %}
-                    <p><em>No images uploaded yet.</em></p>
-                {% endif %}
+
             {% elif letter.letter_type == "pdf" %}
                 {% if letter.pdf %}
                     <p>📄 <a href="{{ letter.pdf.url }}" target="_blank">View PDF</a></p>
                 {% else %}
                     <p><em>No PDF uploaded yet.</em></p>
                 {% endif %}
+
+            {% elif letter.letter_type == "image" and letter.images.exists %}
+                <div style="position: relative; max-width: 400px; margin-top: 10px;">
+                    {% with group_id=forloop.counter %}
+                        {% with images=letter.images.all %}
+                            {% for image in images %}
+                                <div style="display: {% if forloop.first %}block{% else %}none{% endif %};"
+                                     class="slide-group-{{ group_id }}" id="slide-{{ group_id }}-{{ forloop.counter }}">
+                                    <img src="{{ image.image.url }}" alt="Letter Image"
+                                         style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain;">
+                                </div>
+                            {% endfor %}
+
+                            {% if images|length > 1 %}
+                                <button onclick="prevSlide({{ group_id }}, {{ images|length }})" id="prevBtn-{{ group_id }}"
+                                        style="position: absolute; left: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">←</button>
+                                <button onclick="nextSlide({{ group_id }}, {{ images|length }})" id="nextBtn-{{ group_id }}"
+                                        style="position: absolute; right: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">→</button>
+                            {% endif %}
+                        {% endwith %}
+                    {% endwith %}
+                </div>
             {% endif %}
         </div>
     {% endfor %}
@@ -48,5 +73,55 @@
 
 <br><br>
 <a href="{% url 'edit_profile' %}" class="btn btn-secondary">✏️ Edit Profile</a>
+
+<script>
+  const currentSlides = {};
+
+  function showSlide(groupId, index, total) {
+    for (let i = 1; i <= total; i++) {
+      const slide = document.getElementById(`slide-${groupId}-${i}`);
+      if (slide) {
+        slide.style.display = (i === index) ? 'block' : 'none';
+      }
+    }
+
+    const prevBtn = document.getElementById(`prevBtn-${groupId}`);
+    const nextBtn = document.getElementById(`nextBtn-${groupId}`);
+
+    if (prevBtn) prevBtn.style.display = index === 1 ? 'none' : 'block';
+    if (nextBtn) nextBtn.style.display = index === total ? 'none' : 'block';
+
+    currentSlides[groupId] = index;
+  }
+
+  function nextSlide(groupId, total) {
+    if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+    if (currentSlides[groupId] < total) {
+      currentSlides[groupId]++;
+      showSlide(groupId, currentSlides[groupId], total);
+    }
+  }
+
+  function prevSlide(groupId, total) {
+    if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+    if (currentSlides[groupId] > 1) {
+      currentSlides[groupId]--;
+      showSlide(groupId, currentSlides[groupId], total);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const groups = new Set();
+    document.querySelectorAll("[class^='slide-group-']").forEach(el => {
+      const match = el.className.match(/slide-group-(\d+)/);
+      if (match) groups.add(match[1]);
+    });
+
+    groups.forEach(groupId => {
+      const total = document.querySelectorAll(`.slide-group-${groupId}`).length;
+      showSlide(groupId, 1, total);
+    });
+  });
+</script>
 
 {% endblock %}
