@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponseForbidden
 from .models import Letter, LetterImage, Profile, LetterLike, Match, Message
 from django.db.models import Q
-
+import uuid  
 from .forms import (
     LetterForm,
     MessageForm,
@@ -169,6 +169,8 @@ def message_view(request, profile_id):
 
     return render(request, 'messages.html', {'receiver': receiver, 'messages': messages_qs, 'form': form})
 
+from django.contrib import messages  # if not already imported
+
 @login_required
 def edit_profile(request):
     profile = request.user.profile
@@ -191,7 +193,20 @@ def edit_profile(request):
                 except Letter.DoesNotExist:
                     pass
 
+            # ✅ Handle deferred deletions
+            delete_ids_str = request.POST.get('delete_image_ids', '')
+            if delete_ids_str:
+                delete_ids = [int(i) for i in delete_ids_str.split(',') if i.isdigit()]
+                LetterImage.objects.filter(id__in=delete_ids, letter__profile=profile).delete()
+
+            # ✅ Handle image uploads to the letter (if any)
+            for letter in letters.filter(letter_type='image'):
+                for img in request.FILES.getlist('images'):
+                    LetterImage.objects.create(letter=letter, image=img)
+
+            messages.success(request, "✅ Profile updated successfully!")
             return redirect('view_profile')
+
     else:
         form = ProfileForm(instance=profile)
 
@@ -206,21 +221,22 @@ def edit_profile(request):
         'letters': letters,
         'unread_messages_count': unread_messages_count,
         'unseen_matches_count': unseen_matches_count,
+        'upload_slots': range(5),  # Ensure 5 upload boxes
     })
 
-# 🧠 Register View
 def register(request):
     ages = range(18, 101)
 
     if request.method == 'POST':
         form = FullRegisterForm(request.POST, request.FILES)
         if form.is_valid():
-            user = form.save()
-            user.username = form.cleaned_data['name']
+            user = form.save(commit=False)
+            user.username = str(uuid.uuid4())  # ✅ Ensure unique username
             user.email = form.cleaned_data['email']
             user.save()
 
             profile = user.profile
+            profile.name = form.cleaned_data['name']  # ✅ Store name in Profile
             profile.age = form.cleaned_data['age']
             profile.gender = form.cleaned_data['gender']
             profile.profile_picture = form.cleaned_data.get('profile_picture')
@@ -253,8 +269,7 @@ def register(request):
             return render(request, 'register.html', {'form': form, 'ages': ages})
     else:
         form = FullRegisterForm()
-        return render(request, 'register.html', {'form': form, 'ages': ages})
-
+        return render(request, 'register.html', {'form': form, 'ages': ages})  
 @login_required
 def view_profile(request):
     profile = request.user.profile

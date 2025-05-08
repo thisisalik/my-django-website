@@ -1,9 +1,10 @@
 {% extends 'base.html' %}
-{% block content %}
+{% load custom_filters %}
 
+{% block content %}
 <h2>Edit Your Profile ✏️</h2>
 
-<form method="POST" enctype="multipart/form-data">
+<form method="POST" enctype="multipart/form-data" id="profile-form">
     {% csrf_token %}
     {{ form.as_p }}
 
@@ -22,26 +23,33 @@
 
             {% elif letter.letter_type == "image" %}
                 <label><strong>Your Letter Images:</strong></label><br>
-                {% if letter.images.exists %}
-                    <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
-                        {% for img in letter.images.all %}
-                            <div style="position: relative; display: inline-block;">
-                                <img src="{{ img.image.url }}" alt="Letter Image"
-                                     style="max-width: 200px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1);">
-                                <a href="{% url 'delete_letter_image' img.id %}"
-                                   onclick="return confirm('Delete this image?');"
-                                   style="position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8);
-                                   color: white; border-radius: 50%; padding: 3px 8px; text-decoration: none;
-                                   font-weight: bold; font-size: 14px;">
-                                    ×
-                                </a>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                    {% for i in "12345" %}
+                        {% with index=forloop.counter0 %}
+                            <div style="position: relative; width: 200px; height: 200px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center;">
+                                {% if letter.images.all|length > index %}
+                                    {% with img=letter.images.all|get_item:index %}
+                                        {% if img %}
+                                            <img src="{{ img.image.url }}" alt="Letter Image" style="max-width: 100%; max-height: 100%; border-radius: 8px;">
+                                            <button type="button" class="mark-delete" data-img-id="{{ img.id }}"
+                                               style="position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8);
+                                               color: white; border-radius: 50%; padding: 3px 8px; text-decoration: none;
+                                               font-weight: bold; font-size: 14px; cursor: pointer;">
+                                                ×
+                                            </button>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    <label style="cursor: pointer;">
+                                        ➕
+                                        <input type="file" name="images" style="display: none;">
+                                    </label>
+                                {% endif %}
                             </div>
-                        {% endfor %}
-                    </div>
-                    <a href="{% url 'add_letter_images' letter.id %}" class="btn btn-sm btn-primary">➕ Upload More Images</a>
-                {% else %}
-                    <a href="{% url 'upload_letter' %}" class="btn btn-sm btn-primary">➕ Upload a New Letter</a>
-                {% endif %}
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="delete_image_ids" id="delete_image_ids">
 
             {% elif letter.letter_type == "pdf" %}
                 {% if letter.pdf %}
@@ -60,7 +68,7 @@
     {% endif %}
 
     {% if not letters %}
-        <a href="{% url 'upload_letter' %}" class="btn btn-primary">➕ Upload Your  Letter</a>
+        <a href="{% url 'upload_letter' %}" class="btn btn-primary">➕ Upload Your Letter</a>
         <br><br>
     {% endif %}
 
@@ -70,4 +78,18 @@
 <br>
 <a href="{% url 'view_profile' %}" class="btn btn-secondary">← Back to Profile</a>
 
+<script>
+  const deleteButtons = document.querySelectorAll(".mark-delete");
+  const deleteImageInput = document.getElementById("delete_image_ids");
+  let deleteIds = [];
+
+  deleteButtons.forEach(btn => {
+    btn.addEventListener("click", function () {
+      const imgId = this.getAttribute("data-img-id");
+      deleteIds.push(imgId);
+      deleteImageInput.value = deleteIds.join(",");
+      this.closest("div").remove();
+    });
+  });
+</script>
 {% endblock %}
