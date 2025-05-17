@@ -96,9 +96,24 @@ def react_to_letter(request, letter_id):
 def upload_letter(request):
     profile = request.user.profile
 
-    if Letter.objects.filter(profile=profile).exists():
-        return redirect('view_profile')
+    existing_letter = Letter.objects.filter(profile=profile).first()
 
+    # ✅ Redirect only if a usable letter exists
+    if existing_letter:
+        if existing_letter.letter_type == 'text' and existing_letter.text_content:
+            return redirect('view_profile')
+        if existing_letter.letter_type == 'pdf' and existing_letter.pdf:
+            return redirect('view_profile')
+        if existing_letter.letter_type == 'image':
+            # Here's the fix: only block if the letter *still has* images
+            if LetterImage.objects.filter(letter=existing_letter).exists():
+                return redirect('view_profile')
+            else:
+                # Letter exists but empty → let user re-upload
+                existing_letter.delete()  # 💥 important: wipe it
+                messages.info(request, "Previous empty letter cleared. You can upload a new one.")
+
+    # ✅ Handle letter creation
     if request.method == 'POST':
         form = LetterForm(request.POST, request.FILES)
         if form.is_valid():
@@ -106,7 +121,6 @@ def upload_letter(request):
             letter.profile = profile
             letter.save()
 
-            # Save uploaded images separately
             if letter.letter_type == 'image':
                 for img in request.FILES.getlist('images'):
                     LetterImage.objects.create(letter=letter, image=img)
@@ -119,6 +133,7 @@ def upload_letter(request):
         form = LetterForm()
 
     return render(request, 'upload_letter.html', {'form': form})
+
 # 🧠 View Matches
 @login_required
 def view_matches(request):
@@ -178,37 +193,67 @@ def edit_profile(request):
 
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES, instance=profile)
+        letter_form = LetterForm(request.POST, request.FILES)
 
         if form.is_valid():
             form.save()
 
-            letter_id = request.POST.get('letter_id')
-            new_text = request.POST.get('text_content', '').strip()
-
-            if letter_id and new_text:
-                try:
-                    letter = Letter.objects.get(id=letter_id, profile=profile, letter_type='text')
+            for letter in letters.filter(letter_type='text'):
+                text_key = f'text_content_{letter.id}'
+                new_text = request.POST.get(text_key, '').strip()
+                if new_text:
                     letter.text_content = new_text
                     letter.save()
-                except Letter.DoesNotExist:
-                    pass
 
-            # ✅ Handle deferred deletions
             delete_ids_str = request.POST.get('delete_image_ids', '')
             if delete_ids_str:
                 delete_ids = [int(i) for i in delete_ids_str.split(',') if i.isdigit()]
                 LetterImage.objects.filter(id__in=delete_ids, letter__profile=profile).delete()
 
-            # ✅ Handle image uploads to the letter (if any)
+            # ✅ Auto-delete image-type letters if they no longer have images
+            for letter in letters.filter(letter_type='image'):
+                if not letter.images.exists():
+                    letter.delete()
+
+            # ✅ Handle image uploads to remaining letters
             for letter in letters.filter(letter_type='image'):
                 for img in request.FILES.getlist('images'):
                     LetterImage.objects.create(letter=letter, image=img)
+
+            # ✅ Create new letter if user added one
+            if letter_form.is_valid():
+                letter_type = letter_form.cleaned_data.get('letter_type')
+                text_content = letter_form.cleaned_data.get('text_content', '').strip()
+                pdf = letter_form.cleaned_data.get('pdf')
+                images = request.FILES.getlist('images')
+
+                if letter_type and (text_content or pdf or images):
+                    letter = Letter.objects.create(
+                        profile=profile,
+                        letter_type=letter_type,
+                        text_content=text_content,
+                        pdf=pdf
+                    )
+
+                    if letter_type == 'image':
+                        for img in images:
+                            LetterImage.objects.create(letter=letter, image=img)
 
             messages.success(request, "✅ Profile updated successfully!")
             return redirect('view_profile')
 
     else:
         form = ProfileForm(instance=profile)
+        letter_form = LetterForm()
+
+    ages = range(18, 101)
+
+    # ✅ New logic: Only show upload section if one image letter exists
+    only_image_letter = (
+        letters.count() == 1 and
+        letters.first().letter_type == 'image' and
+        letters.first().images.exists()
+    )
 
     unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
     unseen_matches_count = Match.objects.filter(
@@ -218,11 +263,15 @@ def edit_profile(request):
 
     return render(request, 'edit_profile.html', {
         'form': form,
+        'letter_form': letter_form,
         'letters': letters,
         'unread_messages_count': unread_messages_count,
         'unseen_matches_count': unseen_matches_count,
-        'upload_slots': range(5),  # Ensure 5 upload boxes
+        'upload_slots': range(5),
+        'ages': ages,
+        'only_image_letter': only_image_letter,  # ✅ pass this to template
     })
+
 
 def register(request):
     ages = range(18, 101)
@@ -273,8 +322,11 @@ def register(request):
 @login_required
 def view_profile(request):
     profile = request.user.profile
-    letters = Letter.objects.filter(profile=profile)
-    has_letter = letters.exists()
+
+    # ✅ Exclude image letters that have no images
+    all_letters = Letter.objects.filter(profile=profile)
+    letters = [l for l in all_letters if not (l.letter_type == 'image' and not l.images.exists())]
+    has_letter = bool(letters)
 
     unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
     unseen_matches_count = Match.objects.filter(
@@ -289,6 +341,7 @@ def view_profile(request):
         'unread_messages_count': unread_messages_count,
         'unseen_matches_count': unseen_matches_count,
     })
+
 @login_required
 def edit_letter(request, letter_id):
     profile = request.user.profile
