@@ -1,15 +1,28 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Chat with {{ receiver.user.username }}</h2>
-<div>
-  {% for msg in messages %}
-    <p><strong>{{ msg.sender.user.username }}:</strong> {{ msg.text }} <small>{{ msg.timestamp }}</small></p>
-  {% endfor %}
+<h2>Chat with {{ receiver.profile.name }}</h2>
+
+<div id="message-container">
+  {% include 'partial_messages.html' %}
 </div>
-<form method="post">
+
+<form method="post" id="message-form">
   {% csrf_token %}
   {{ form.as_p }}
   <button type="submit">Send</button>
 </form>
+
 <p><a href="/chats/">← Back to Chat List</a></p>
+
+<script>
+  function loadMessages() {
+    fetch("{% url 'fetch_messages' receiver.id %}")
+      .then(response => response.text())
+      .then(html => {
+        document.getElementById("message-container").innerHTML = html;
+      });
+  }
+
+  setInterval(loadMessages, 5000); // every 5 seconds
+</script>
 {% endblock %}

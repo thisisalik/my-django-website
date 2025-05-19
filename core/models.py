@@ -23,10 +23,14 @@ class LetterImage(models.Model):
     image = models.ImageField(upload_to='letters/images/')
 
 class LetterLike(models.Model):
-    from_profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='from_likes')
-    to_letter = models.ForeignKey(Letter, on_delete=models.CASCADE)
-    liked = models.BooleanField()
+    from_profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='likes_given')
+    to_letter = models.ForeignKey(Letter, on_delete=models.CASCADE, related_name='likes_received')
+    liked = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        status = "Liked" if self.liked else "Skipped"
+        return f"{self.from_profile.name} {status} letter by {self.to_letter.profile.name}"
 
 class Match(models.Model):
     user1 = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='match_user1')

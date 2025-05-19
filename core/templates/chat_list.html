@@ -5,7 +5,7 @@
 <ul>
   {% for match in matches %}
     <li>
-      <a href="{% url 'message_view' match.id %}">💬 Chat with {{ match.user.username }}</a>
+      <a href="{% url 'message_view' match.id %}?active_chat={{ match.id }}">💬 Chat with {{ match.name }}</a>
       |
       <a href="{% url 'matched_profile' match.id %}">👀 View Profile</a>
     </li>

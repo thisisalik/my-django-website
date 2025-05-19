@@ -45,6 +45,27 @@ class MessageForm(forms.ModelForm):
         }
 
 class ProfileForm(forms.ModelForm):
+    GENDER_CHOICES = [
+        ('Male', 'Male'),
+        ('Female', 'Female'),
+        ('Non-binary', 'Non-binary'),
+        ('Trans', 'Trans'),
+        ('Other', 'Other'),
+        ('Prefer not to say', 'Prefer not to say'),
+    ]
+
+    PREFERRED_GENDER_CHOICES = [
+        ('Any', 'Any'),
+        ('Male', 'Male'),
+        ('Female', 'Female'),
+        ('Non-binary', 'Non-binary'),
+        ('Trans', 'Trans'),
+        ('Other', 'Other'),
+    ]
+
+    gender = forms.ChoiceField(choices=GENDER_CHOICES)
+    preferred_gender = forms.ChoiceField(choices=PREFERRED_GENDER_CHOICES, required=False)
+
     class Meta:
         model = Profile
         fields = [

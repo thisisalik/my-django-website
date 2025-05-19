@@ -14,6 +14,30 @@ from .forms import (
     FullRegisterForm
 )
 from .models import Notification
+from django.http import JsonResponse
+
+@login_required
+def live_notifications(request):
+    profile = request.user.profile
+
+    new_likes_count = LetterLike.objects.filter(
+        to_letter__profile=profile,
+        liked=True
+    ).exclude(
+        from_profile__in=LetterLike.objects.filter(from_profile=profile).values_list('to_letter__profile', flat=True)
+    ).count()
+
+    unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
+    unseen_matches_count = Match.objects.filter(
+        Q(user1=profile, is_seen_by_user1=False) |
+        Q(user2=profile, is_seen_by_user2=False)
+    ).count()
+
+    return JsonResponse({
+        'new_likes_count': new_likes_count,
+        'unread_messages_count': unread_messages_count,
+        'unseen_matches_count': unseen_matches_count,
+    })
 
 # 🧠 Browse Letters
 @login_required
@@ -273,6 +297,9 @@ def edit_profile(request):
     })
 
 
+from django.contrib.auth import login
+import uuid  # already in your code
+
 def register(request):
     ages = range(18, 101)
 
@@ -280,12 +307,14 @@ def register(request):
         form = FullRegisterForm(request.POST, request.FILES)
         if form.is_valid():
             user = form.save(commit=False)
-            user.username = str(uuid.uuid4())  # ✅ Ensure unique username
+
+            # ✅ Use email as username so login works
+            user.username = form.cleaned_data['email']
             user.email = form.cleaned_data['email']
             user.save()
 
             profile = user.profile
-            profile.name = form.cleaned_data['name']  # ✅ Store name in Profile
+            profile.name = form.cleaned_data['name']
             profile.age = form.cleaned_data['age']
             profile.gender = form.cleaned_data['gender']
             profile.profile_picture = form.cleaned_data.get('profile_picture')
@@ -318,7 +347,8 @@ def register(request):
             return render(request, 'register.html', {'form': form, 'ages': ages})
     else:
         form = FullRegisterForm()
-        return render(request, 'register.html', {'form': form, 'ages': ages})  
+        return render(request, 'register.html', {'form': form, 'ages': ages})
+
 @login_required
 def view_profile(request):
     profile = request.user.profile
@@ -415,7 +445,19 @@ def like_back(request, profile_id):
 
     their_letter = other_profile.letter_set.order_by('-created_at').first()
     if their_letter:
+        # ✅ Create the like
         LetterLike.objects.create(from_profile=my_profile, to_letter=their_letter, liked=True)
+
+        # ✅ Check for reverse like to form a match
+        reverse_like_exists = LetterLike.objects.filter(
+            from_profile=other_profile,
+            to_letter__profile=my_profile,
+            liked=True
+        ).exists()
+
+        if reverse_like_exists:
+            if not Match.objects.filter(user1__in=[my_profile, other_profile], user2__in=[my_profile, other_profile]).exists():
+                Match.objects.create(user1=my_profile, user2=other_profile)
 
     return redirect('likes_received')
 
@@ -508,10 +550,15 @@ def chat_list_view(request):
     matches = Match.objects.filter(user1=profile) | Match.objects.filter(user2=profile)
     matched_profiles = [m.user2 if m.user1 == profile else m.user1 for m in matches]
 
-    # ✅ Count unread messages
-    unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
+    # Get the profile ID of the user you're currently chatting with (if any)
+    current_chat_id = request.GET.get('active_chat')
+    
+    # ✅ Exclude current chat from unread count
+    unread_qs = Message.objects.filter(receiver=profile, is_read=False)
+    if current_chat_id:
+        unread_qs = unread_qs.exclude(sender_id=current_chat_id)
+    unread_messages_count = unread_qs.count()
 
-    # ✅ Count unseen matches
     unseen_matches_count = Match.objects.filter(
         Q(user1=profile, is_seen_by_user1=False) |
         Q(user2=profile, is_seen_by_user2=False)
@@ -522,3 +569,24 @@ def chat_list_view(request):
         'unread_messages_count': unread_messages_count,
         'unseen_matches_count': unseen_matches_count,
     })
+
+
+@login_required
+def fetch_messages(request, profile_id):
+    sender = request.user.profile
+    receiver = get_object_or_404(Profile, id=profile_id)
+
+    matched = Match.objects.filter(
+        user1__in=[sender, receiver],
+        user2__in=[sender, receiver]
+    ).exists()
+
+    if not matched:
+        return HttpResponseForbidden("Unauthorized")
+
+    messages_qs = Message.objects.filter(
+        sender__in=[sender, receiver],
+        receiver__in=[sender, receiver]
+    ).order_by('timestamp')
+
+    return render(request, 'partial_messages.html', {'messages': messages_qs})

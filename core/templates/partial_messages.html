@@ -1,0 +1,3 @@
+{% for msg in messages %}
+  <p><strong>{{ msg.sender.profile.name }}:</strong> {{ msg.text }} <small>{{ msg.timestamp }}</small></p>
+{% endfor %}

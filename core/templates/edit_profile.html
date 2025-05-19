@@ -3,8 +3,15 @@
 
 {% block content %}
 <style>
-  nav, .navbar, header {
+  nav.navbar, .top-menu-bar {
     display: none !important;
+  }
+
+  /* ✅ Revert select styling to native for dropdowns to work correctly */
+  select {
+    appearance: revert;
+    -webkit-appearance: revert;
+    -moz-appearance: revert;
   }
 </style>
 
@@ -22,8 +29,12 @@
     </p>
 
     <p><label for="id_gender">Gender:</label> {{ form.gender }}</p>
+
+
     <p><label for="id_profile_picture">Profile picture:</label> {{ form.profile_picture }}</p>
+
     <p><label for="id_preferred_gender">Preferred gender:</label> {{ form.preferred_gender }}</p>
+
 
     <p><label for="id_preferred_age_min">Preferred age min:</label>
       <select name="preferred_age_min" id="id_preferred_age_min">
@@ -89,7 +100,6 @@
         {% endfor %}
     {% endif %}
 
-    <!-- Show upload letter form if no letter or only image letter with no images -->
     {% if not letters or only_image_letter %}
     <div id="letter_upload_section" style="margin-top: 20px;">
         <p><strong>Add Your Letter:</strong></p>

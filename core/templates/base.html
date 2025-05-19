@@ -1,60 +1,81 @@
+{% load static %}
 <nav style="padding: 10px; background: #eee; display: flex; gap: 20px; align-items: center;">
-    <a href="/letters/" title="Browse Letters" style="text-decoration: none; font-size: 24px;">💌</a>
-  
-    <a href="/likes/" title="Likes You" style="position: relative; text-decoration: none; font-size: 24px;">
-      🐢
-      {% if new_likes_count and new_likes_count > 0 %}
-        <span style="
-          position: absolute;
-          top: -5px;
-          right: -10px;
-          background: red;
-          color: white;
-          font-size: 12px;
-          padding: 2px 6px;
-          border-radius: 50%;
-        ">
-          {{ new_likes_count }}
-        </span>
-      {% endif %}
-    </a>
-  
-    <a href="/chats/" title="Messages" style="position: relative; text-decoration: none; font-size: 24px;">
-      💬
-      {% if unread_messages_count|add:unseen_matches_count > 0 %}
-        <span style="
-          position: absolute;
-          top: -5px;
-          right: -10px;
-          background: red;
-          color: white;
-          font-size: 12px;
-          padding: 2px 6px;
-          border-radius: 50%;
-        ">
-          {{ unread_messages_count|add:unseen_matches_count }}
-        </span>
-      {% endif %}
-    </a>
-  
-    <a href="/profile/" title="Your Profile" style="text-decoration: none; font-size: 24px;">
-      {% if request.user.is_authenticated and request.user.profile.profile_picture %}
-        <img src="{{ request.user.profile.profile_picture.url }}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
-      {% else %}
-        🧑
-      {% endif %}
-    </a>
-  
-    <form action="/accounts/logout/" method="post" style="margin-left: auto;">
-      {% csrf_token %}
-      <button title="Logout" type="submit" style="background: none; border: none; font-size: 24px; cursor: pointer;">
-        🚪
-      </button>
-    </form>
-  </nav>
-  
-  <div style="padding: 20px;">
-    {% block content %}
-    {% endblock %}
-  </div>
-  
+  <a href="/letters/" title="Browse Letters" style="text-decoration: none; font-size: 24px;">💌</a>
+
+  <a href="/likes/" title="Likes You" id="likes-icon" style="position: relative; text-decoration: none; font-size: 24px;">
+    🐢
+    <span id="likes-count" style="display: none;
+      position: absolute;
+      top: -5px;
+      right: -10px;
+      background: red;
+      color: white;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 50%;"></span>
+  </a>
+
+  <a href="/chats/" title="Messages" id="messages-icon" style="position: relative; text-decoration: none; font-size: 24px;">
+    💬
+    <span id="messages-count" style="display: none;
+      position: absolute;
+      top: -5px;
+      right: -10px;
+      background: red;
+      color: white;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 50%;"></span>
+  </a>
+
+  <a href="/profile/" title="Your Profile" style="text-decoration: none; font-size: 24px;">
+    {% if request.user.is_authenticated and request.user.profile.profile_picture %}
+      <img src="{{ request.user.profile.profile_picture.url }}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+    {% else %}
+      🧑
+    {% endif %}
+  </a>
+
+  <form action="/accounts/logout/" method="post" style="margin-left: auto;">
+    {% csrf_token %}
+    <button title="Logout" type="submit" style="background: none; border: none; font-size: 24px; cursor: pointer;">
+      🚪
+    </button>
+  </form>
+</nav>
+
+<div style="padding: 20px;">
+  {% block content %}
+  {% endblock %}
+</div>
+
+<script>
+  function updateNotifications() {
+    fetch('/notifications/live/')
+      .then(response => response.json())
+      .then(data => {
+        const likesCount = data.new_likes_count;
+        const messagesCount = data.unread_messages_count + data.unseen_matches_count;
+
+        const likesSpan = document.getElementById('likes-count');
+        const messagesSpan = document.getElementById('messages-count');
+
+        if (likesCount > 0) {
+          likesSpan.textContent = likesCount;
+          likesSpan.style.display = 'inline';
+        } else {
+          likesSpan.style.display = 'none';
+        }
+
+        if (messagesCount > 0) {
+          messagesSpan.textContent = messagesCount;
+          messagesSpan.style.display = 'inline';
+        } else {
+          messagesSpan.style.display = 'none';
+        }
+      });
+  }
+
+  setInterval(updateNotifications, 5000);
+  updateNotifications();  // Initial call
+</script>
