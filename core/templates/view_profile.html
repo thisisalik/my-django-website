@@ -14,11 +14,15 @@
 </h2>
 
 <p><strong>Name:</strong> {{ profile.name }}</p>
-<p><strong>Email:</strong> {{ profile.user.email }}</p>
 <p><strong>Age:</strong> {{ profile.age }}</p>
 <p><strong>Gender:</strong> {{ profile.gender }}</p>
 <p><strong>Preferred Gender:</strong> {{ profile.preferred_gender }}</p>
 <p><strong>Preferred Age:</strong> {{ profile.preferred_age_min }} - {{ profile.preferred_age_max }}</p>
+<p><strong>City:</strong> {{ profile.location }}</p>
+
+{% if profile.connection_types %}
+<p><strong>Interested in:</strong> {{ profile.get_connection_type_labels|join:', ' }}</p>
+{% endif %}
 
 <hr>
 
@@ -55,9 +59,9 @@
 
                             {% if images|length > 1 %}
                                 <button onclick="prevSlide({{ group_id }}, {{ images|length }})" id="prevBtn-{{ group_id }}"
-                                        style="position: absolute; left: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">←</button>
+                                        style="position: absolute; left: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">&larr;</button>
                                 <button onclick="nextSlide({{ group_id }}, {{ images|length }})" id="nextBtn-{{ group_id }}"
-                                        style="position: absolute; right: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">→</button>
+                                        style="position: absolute; right: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">&rarr;</button>
                             {% endif %}
                         {% endwith %}
                     {% endwith %}

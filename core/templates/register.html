@@ -48,6 +48,23 @@
     </select>
   </p>
 
+  <p><label for="id_location">City:</label>
+    <input type="text" name="location" id="id_location" value="{{ form.location.value|default_if_none:'' }}" autocomplete="off" />
+
+    <div id="city-suggestions" style="border: 1px solid #ccc; display:none; position: absolute; background: white; z-index: 10;"></div>
+    </p>
+    
+<div style="margin-top: -10px; margin-bottom: 10px;">
+  {% for checkbox in form.only_same_city %}
+    <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
+  {% endfor %}
+</div>
+    {% for checkbox in form.connection_types %}
+      <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
+    {% endfor %}
+  </div>
+  </p>
+
   <!-- ✅ Add Your Letter section with toggle -->
   <p><strong>Add Your Letter:</strong></p>
   <p>
@@ -72,17 +89,17 @@
       <label for="id_pdf">Upload PDF:</label><br>
       {{ form.pdf }}
     </div>
-
     <br>
   </div>
 
   <br><br>
-  <!-- ✅ Register button at the very bottom -->
   <button type="submit" class="btn btn-success">📝 Register</button>
 </form>
 
 <p style="margin-top: 20px;">Already have an account? <a href="/accounts/login/">Login</a></p>
+<script src="{% static 'js/city_autocomplete.js' %}"></script>
 
+  
 <script>
   const letterTypeSelect = document.getElementById('id_letter_type');
   const textDiv = document.getElementById('text_content_div');
@@ -111,5 +128,28 @@
     skipCheckbox.addEventListener('change', toggleLetterUploadVisibility);
     toggleLetterUploadVisibility();
   }
+
+  document.querySelector('form').addEventListener('submit', function (e) {
+    const connectionTypes = document.querySelectorAll("input[name='connection_types']:checked");
+    if (connectionTypes.length === 0) {
+      e.preventDefault();
+      alert("❌ Please select at least one interest (e.g., Dating, Friendship, etc.).");
+      return false;
+    }
+
+    if (!skipCheckbox.checked) {
+      const letterType = letterTypeSelect.value;
+      const textInput = document.getElementById('id_text_content');
+
+      if (letterType === 'text' && textInput && textInput.value.trim().length < 4) {
+        e.preventDefault();
+        alert("❌ Letter text must be at least 4 characters long.");
+        textInput.focus();
+        return false;
+      }
+    }
+  });
+
 </script>
+
 {% endblock %}

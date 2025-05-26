@@ -69,6 +69,10 @@ def browse_letter(request):
         if profile.preferred_age_max:
             letters = letters.filter(profile__age__lte=profile.preferred_age_max)
 
+    # ✅ Filter by same city if user wants
+    if profile.only_same_city and profile.location:
+        letters = letters.filter(profile__location__iexact=profile.location)
+
     seen_ids = LetterLike.objects.filter(from_profile=profile).values_list('to_letter_id', flat=True)
     letters = letters.exclude(id__in=seen_ids)
 
@@ -93,6 +97,7 @@ def browse_letter(request):
         'unread_messages_count': unread_messages_count,
         'unseen_matches_count': unseen_matches_count,
     })
+
 
 # 🧠 React to a Letter
 @login_required
@@ -220,7 +225,11 @@ def edit_profile(request):
         letter_form = LetterForm(request.POST, request.FILES)
 
         if form.is_valid():
-            form.save()
+            profile = form.save(commit=False)
+
+            # ✅ Fix: preserve selected connection types
+            profile.connection_types = request.POST.getlist('connection_types')
+            profile.save()
 
             for letter in letters.filter(letter_type='text'):
                 text_key = f'text_content_{letter.id}'
@@ -234,17 +243,14 @@ def edit_profile(request):
                 delete_ids = [int(i) for i in delete_ids_str.split(',') if i.isdigit()]
                 LetterImage.objects.filter(id__in=delete_ids, letter__profile=profile).delete()
 
-            # ✅ Auto-delete image-type letters if they no longer have images
             for letter in letters.filter(letter_type='image'):
                 if not letter.images.exists():
                     letter.delete()
 
-            # ✅ Handle image uploads to remaining letters
             for letter in letters.filter(letter_type='image'):
                 for img in request.FILES.getlist('images'):
                     LetterImage.objects.create(letter=letter, image=img)
 
-            # ✅ Create new letter if user added one
             if letter_form.is_valid():
                 letter_type = letter_form.cleaned_data.get('letter_type')
                 text_content = letter_form.cleaned_data.get('text_content', '').strip()
@@ -272,7 +278,6 @@ def edit_profile(request):
 
     ages = range(18, 101)
 
-    # ✅ New logic: Only show upload section if one image letter exists
     only_image_letter = (
         letters.count() == 1 and
         letters.first().letter_type == 'image' and
@@ -293,7 +298,7 @@ def edit_profile(request):
         'unseen_matches_count': unseen_matches_count,
         'upload_slots': range(5),
         'ages': ages,
-        'only_image_letter': only_image_letter,  # ✅ pass this to template
+        'only_image_letter': only_image_letter,
     })
 
 
@@ -321,6 +326,10 @@ def register(request):
             profile.preferred_gender = form.cleaned_data.get('preferred_gender')
             profile.preferred_age_min = form.cleaned_data.get('preferred_age_min')
             profile.preferred_age_max = form.cleaned_data.get('preferred_age_max')
+            profile.location = form.cleaned_data.get('location')  # ✅ Save city
+            profile.only_same_city = bool(form.cleaned_data.get('only_same_city'))  # ✅ Save checkbox
+            profile.connection_types = request.POST.getlist('connection_types')  # ✅ Save connection types
+
             profile.save()
 
             # ✅ Only create a letter if actual content is provided
@@ -550,24 +559,23 @@ def chat_list_view(request):
     matches = Match.objects.filter(user1=profile) | Match.objects.filter(user2=profile)
     matched_profiles = [m.user2 if m.user1 == profile else m.user1 for m in matches]
 
-    # Get the profile ID of the user you're currently chatting with (if any)
-    current_chat_id = request.GET.get('active_chat')
-    
-    # ✅ Exclude current chat from unread count
-    unread_qs = Message.objects.filter(receiver=profile, is_read=False)
-    if current_chat_id:
-        unread_qs = unread_qs.exclude(sender_id=current_chat_id)
-    unread_messages_count = unread_qs.count()
+    # Get list of profile IDs who sent unread messages
+    unread_senders = set(
+        Message.objects.filter(receiver=profile, is_read=False)
+        .values_list('sender_id', flat=True)
+    )
 
-    unseen_matches_count = Match.objects.filter(
-        Q(user1=profile, is_seen_by_user1=False) |
-        Q(user2=profile, is_seen_by_user2=False)
-    ).count()
+    # Add a custom attribute to indicate unread messages
+    for m in matched_profiles:
+        m.has_unread = m.id in unread_senders
 
     return render(request, 'chat_list.html', {
         'matches': matched_profiles,
-        'unread_messages_count': unread_messages_count,
-        'unseen_matches_count': unseen_matches_count,
+        'unread_messages_count': len(unread_senders),
+        'unseen_matches_count': Match.objects.filter(
+            Q(user1=profile, is_seen_by_user1=False) |
+            Q(user2=profile, is_seen_by_user2=False)
+        ).count()
     })
 
 

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
+{% load static %}
 
 {% block content %}
 <style>
@@ -50,8 +51,28 @@
           <option value="{{ age }}" {% if form.preferred_age_max.value == age %}selected{% endif %}>{{ age }}</option>
         {% endfor %}
       </select>
-    </p>
-
+      <p>
+        <label for="id_location">City:</label>
+        <input type="text" name="location" id="id_location" value="{{ form.location.value|default_if_none:'' }}" autocomplete="off" />
+        <div id="city-suggestions" style="border: 1px solid #ccc; display:none; position: absolute; background: white; z-index: 10;"></div>
+      </p>
+      
+      <div style="margin-top: -10px; margin-bottom: 10px;">
+        {% for checkbox in form.only_same_city %}
+          <label style="display: block;">{{ checkbox.tag }} Only show matches from my city</label>
+        {% endfor %}
+      </div>
+      
+      
+      <p><strong>Interested in:</strong></p>
+      {{ form.connection_types.errors }}
+      <div>
+        {% for checkbox in form.connection_types %}
+          <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
+        {% endfor %}
+      </div>
+      
+    
     {% if letters %}
         {% for letter in letters %}
             {% if letter.letter_type == "text" %}
@@ -127,6 +148,7 @@
 
 <br>
 <a href="{% url 'view_profile' %}" class="btn btn-secondary">← Back to Profile</a>
+<script src="{% static 'js/city_autocomplete.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -230,6 +252,25 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     checkIfNoImagesLeft();
+       // 👇 Paste this part here
+       document.getElementById('profile-form').addEventListener('submit', function (e) {
+        const textareas = document.querySelectorAll("textarea[name^='text_content_']");
+        for (let textarea of textareas) {
+            if (textarea.value.trim().length < 4) {
+                e.preventDefault();
+                alert("❌ Letter text must be at least 4 characters long.");
+                textarea.focus();
+                return false;
+            }
+        }
+
+        const checkboxes = document.querySelectorAll("input[name='connection_types']:checked");
+        if (checkboxes.length === 0) {
+            e.preventDefault();
+            alert("❌ Please select at least one interest (e.g., Dating, Friendship, etc.).");
+            return false;
+        }
+    });
 });
 </script>
 {% endblock %}
