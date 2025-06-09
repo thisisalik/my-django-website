@@ -2,6 +2,15 @@ from django import forms
 from .models import Letter, LetterImage, Message, Profile
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+import json
+from django.conf import settings
+import os
+from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+
+CITIES_FILE_PATH = os.path.join(settings.BASE_DIR,  'staticfiles', 'js', 'cities.json')
+with open(CITIES_FILE_PATH, encoding='utf-8') as f:
+    VALID_CITIES = set(json.load(f))
 
 class LetterForm(forms.ModelForm):
     class Meta:
@@ -73,7 +82,17 @@ class ProfileForm(forms.ModelForm):
     location = forms.CharField(required=False, label='City')
 
     only_same_city = forms.BooleanField(required=False, label="Only show matches from my city")  # ✅ added
+    
+    def clean(self):
+        cleaned_data = super().clean()  # not leaned_data
+        location = cleaned_data.get("location", "").strip()
 
+        if not location:
+            self.add_error("location", "City is required.")
+        elif location not in VALID_CITIES:
+            self.add_error("location", "Please enter a valid city name")
+
+        return cleaned_data  # important to return it
     class Meta:
         model = Profile
         fields = [
@@ -93,6 +112,7 @@ class ProfileForm(forms.ModelForm):
         if not data:
             raise forms.ValidationError("Please select at least one connection type.")
         return data
+    
 
 class LetterFilterForm(forms.Form):
     min_age = forms.IntegerField(required=False, label='Min Age')
@@ -183,7 +203,22 @@ class FullRegisterForm(UserCreationForm):
         if commit:
             user.save()
         return user
+    
+    def clean(self):
+        cleaned_data = super().clean()  # not leaned_data
+        location = cleaned_data.get("location", "").strip()
 
+        if not location:
+            self.add_error("location", "City is required.")
+        elif location not in VALID_CITIES:
+            self.add_error("location", "Please enter a valid city name")
+
+        return cleaned_data  # important to return it
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise ValidationError("🚫 This email address is already in use. Try logging in instead.")
+        return email
 class LetterImageForm(forms.ModelForm):
     class Meta:
         model = LetterImage

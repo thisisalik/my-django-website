@@ -39,7 +39,6 @@ def live_notifications(request):
         'unseen_matches_count': unseen_matches_count,
     })
 
-# 🧠 Browse Letters
 @login_required
 def browse_letter(request):
     profile = request.user.profile
@@ -69,13 +68,18 @@ def browse_letter(request):
         if profile.preferred_age_max:
             letters = letters.filter(profile__age__lte=profile.preferred_age_max)
 
-    # ✅ Filter by same city if user wants
-    if profile.only_same_city and profile.location:
-        letters = letters.filter(profile__location__iexact=profile.location)
-
+    # ✅ Mutual same-city logic
+        if profile.location:
+            letters = letters.filter(
+         Q(profile__only_same_city=False) | Q(profile__location__iexact=profile.location)
+            )
+            if profile.only_same_city:
+                letters = letters.filter(profile__location__iexact=profile.location)
+    # ✅ Exclude already liked/skipped
     seen_ids = LetterLike.objects.filter(from_profile=profile).values_list('to_letter_id', flat=True)
     letters = letters.exclude(id__in=seen_ids)
 
+    # ✅ Match their preferences
     letters = letters.filter(
         profile__preferred_gender__in=["Any", profile.gender, None]
     ).filter(
@@ -83,8 +87,14 @@ def browse_letter(request):
         profile__preferred_age_max__gte=profile.age if profile.age else 0
     )
 
-    letter = letters.first()
+    # ✅ Filter by connection type (Python-side, safe on all DBs)
+    if profile.connection_types:
+        letters = [l for l in letters if set(l.profile.connection_types or []) & set(profile.connection_types or [])]
 
+    # ✅ Pick the first result
+    letter = letters[0] if letters else None
+
+    # Counts
     unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
     unseen_matches_count = Match.objects.filter(
         Q(user1=profile, is_seen_by_user1=False) |
@@ -97,6 +107,7 @@ def browse_letter(request):
         'unread_messages_count': unread_messages_count,
         'unseen_matches_count': unseen_matches_count,
     })
+
 
 
 # 🧠 React to a Letter

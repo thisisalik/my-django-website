@@ -1,3 +1,5 @@
+console.log("🔥 JS loaded at all?");
+
 document.addEventListener('DOMContentLoaded', function () {
     const cities = [
    
@@ -42,21 +44,22 @@ document.addEventListener('DOMContentLoaded', function () {
     suggestionsBox.style.zIndex = '1000';
     suggestionsBox.style.display = 'none';
     document.body.appendChild(suggestionsBox);
-  
+    console.log("Input changed:", value);
+
     input.addEventListener('input', () => {
-      const value = input.value.toLowerCase();
+      const value = input.value.toLowerCase().trim();
+      console.log("Input changed:", value);
       suggestionsBox.innerHTML = '';
-      if (value.length < 2) {
-        suggestionsBox.style.display = 'none';
-        return;
-      }
-  
-      const matches = cities.filter(city => city.toLowerCase().startsWith(value));
-      if (matches.length === 0) {
-        suggestionsBox.style.display = 'none';
-        return;
-      }
-  
+      suggestionsBox.style.display = 'none';
+    
+      if (value.length < 1) return;
+    
+      const matches = cities.filter(city =>
+        city.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(value)
+      );
+    
+      if (matches.length === 0) return;
+    
       matches.forEach(city => {
         const div = document.createElement('div');
         div.textContent = city;
@@ -68,18 +71,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         suggestionsBox.appendChild(div);
       });
-  
-      const rect = input.getBoundingClientRect();
-      suggestionsBox.style.top = rect.bottom + window.scrollY + "px";
-      suggestionsBox.style.left = rect.left + window.scrollX + "px";
-      suggestionsBox.style.width = rect.width + "px";
-      suggestionsBox.style.display = 'block';
+    
+      // 💡 Use requestAnimationFrame for precise DOM timing
+      setTimeout(() => {
+        const rect = input.getBoundingClientRect();
+        suggestionsBox.style.top = `${rect.bottom + window.scrollY}px`;
+        suggestionsBox.style.left = `${rect.left + window.scrollX}px`;
+        suggestionsBox.style.width = `${rect.width}px`;
+        suggestionsBox.style.display = 'block';
+      }, 10);  // <- this small delay gives layout time to update
     });
-  
-    document.addEventListener('click', (e) => {
-      if (!suggestionsBox.contains(e.target) && e.target !== input) {
-        suggestionsBox.style.display = 'none';
-      }
-    });
+    
+    
   });
   

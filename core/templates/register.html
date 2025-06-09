@@ -15,8 +15,13 @@
   {{ form.non_field_errors }}
 
   <p><label for="id_name">Name:</label> {{ form.name }}</p>
-  <p><label for="id_email">Email:</label> {{ form.email }}</p>
-  <p><label for="id_password1">Password:</label> {{ form.password1 }}</p>
+  <p>
+    <label for="id_email">Email:</label>
+    {{ form.email }}
+    {% if form.email.errors %}
+      <div style="color: red; margin-top: 5px;">{{ form.email.errors.0 }}</div>
+    {% endif %}
+  </p>  <p><label for="id_password1">Password:</label> {{ form.password1 }}</p>
   <p><label for="id_password2">Confirm Password:</label> {{ form.password2 }}</p>
 
   <p><label for="id_age">Age:</label>
@@ -48,20 +53,30 @@
     </select>
   </p>
 
-  <p><label for="id_location">City:</label>
+  <p>
+    <label for="id_location">City:</label>
     <input type="text" name="location" id="id_location" value="{{ form.location.value|default_if_none:'' }}" autocomplete="off" />
-
-    <div id="city-suggestions" style="border: 1px solid #ccc; display:none; position: absolute; background: white; z-index: 10;"></div>
-    </p>
     
-<div style="margin-top: -10px; margin-bottom: 10px;">
-  {% for checkbox in form.only_same_city %}
-    <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
-  {% endfor %}
-</div>
+    {% if form.location.errors %}
+      <div style="color: red; margin-top: 5px;">{{ form.location.errors.0 }}</div>
+    {% endif %}
+    
+    <div id="city-suggestions" style="border: 1px solid #ccc; display:none; position: absolute; background: white; z-index: 10;"></div>
+  </p>
+  
+  <div style="margin-top: -10px; margin-bottom: 10px;">
+    {% for checkbox in form.only_same_city %}
+      <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
+    {% endfor %}
+  </div>
+  
     {% for checkbox in form.connection_types %}
       <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
     {% endfor %}
+    <!-- ✅ Show error if none selected -->
+{% if form.connection_types.errors %}
+<div style="color: red; margin-bottom: 5px;">{{ form.connection_types.errors.0 }}</div>
+{% endif %}
   </div>
   </p>
 

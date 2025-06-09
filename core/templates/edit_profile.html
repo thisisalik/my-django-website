@@ -54,8 +54,11 @@
       <p>
         <label for="id_location">City:</label>
         <input type="text" name="location" id="id_location" value="{{ form.location.value|default_if_none:'' }}" autocomplete="off" />
-        <div id="city-suggestions" style="border: 1px solid #ccc; display:none; position: absolute; background: white; z-index: 10;"></div>
+        {% if form.location.errors %}
+          <div style="color: red; margin-bottom: 10px;">{{ form.location.errors.0 }}</div>
+        {% endif %}
       </p>
+      
       
       <div style="margin-top: -10px; margin-bottom: 10px;">
         {% for checkbox in form.only_same_city %}
@@ -65,11 +68,15 @@
       
       
       <p><strong>Interested in:</strong></p>
-      {{ form.connection_types.errors }}
+      {% if form.connection_types.errors %}
+  <div style="color: red; margin-bottom: 5px;">{{ form.connection_types.errors.0 }}</div>
+{% endif %}
+
       <div>
         {% for checkbox in form.connection_types %}
           <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
         {% endfor %}
+        
       </div>
       
     
