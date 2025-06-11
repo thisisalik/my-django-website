@@ -7,6 +7,7 @@ from django.conf import settings
 import os
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
+from django.forms.widgets import ClearableFileInput
 
 CITIES_FILE_PATH = os.path.join(settings.BASE_DIR,  'staticfiles', 'js', 'cities.json')
 with open(CITIES_FILE_PATH, encoding='utf-8') as f:
@@ -46,15 +47,15 @@ class MessageForm(forms.ModelForm):
         widgets = {
             'text': forms.Textarea(attrs={'rows': 2}),
         }
-
+class CustomFileInput(ClearableFileInput):
+        can_clear = False  # This disables the "Clear" checkbox
 class ProfileForm(forms.ModelForm):
+    
     GENDER_CHOICES = [
         ('Male', 'Male'),
         ('Female', 'Female'),
         ('Non-binary', 'Non-binary'),
-        ('Trans', 'Trans'),
         ('Other', 'Other'),
-        ('Prefer not to say', 'Prefer not to say'),
     ]
 
     PREFERRED_GENDER_CHOICES = [
@@ -62,7 +63,6 @@ class ProfileForm(forms.ModelForm):
         ('Male', 'Male'),
         ('Female', 'Female'),
         ('Non-binary', 'Non-binary'),
-        ('Trans', 'Trans'),
         ('Other', 'Other'),
     ]
 
@@ -82,7 +82,10 @@ class ProfileForm(forms.ModelForm):
     location = forms.CharField(required=False, label='City')
 
     only_same_city = forms.BooleanField(required=False, label="Only show matches from my city")  # ✅ added
-    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'profile_picture' in self.fields:
+            self.fields['profile_picture'].widget = CustomFileInput()
     def clean(self):
         cleaned_data = super().clean()  # not leaned_data
         location = cleaned_data.get("location", "").strip()
@@ -138,12 +141,10 @@ class FullRegisterForm(UserCreationForm):
             ('Male', 'Male'),
             ('Female', 'Female'),
             ('Non-binary', 'Non-binary'),
-            ('Trans', 'Trans'),
             ('Other', 'Other'),
-            ('Prefer not to say', 'Prefer not to say'),
         ]
     )
-    profile_picture = forms.ImageField(required=False)
+    profile_picture = forms.ImageField(required=True, label="Profile picture")
 
     preferred_gender = forms.ChoiceField(
         choices=[
@@ -151,7 +152,6 @@ class FullRegisterForm(UserCreationForm):
             ('Male', 'Male'),
             ('Female', 'Female'),
             ('Non-binary', 'Non-binary'),
-            ('Trans', 'Trans'),
             ('Other', 'Other'),
         ],
         required=False
@@ -212,7 +212,9 @@ class FullRegisterForm(UserCreationForm):
             self.add_error("location", "City is required.")
         elif location not in VALID_CITIES:
             self.add_error("location", "Please enter a valid city name")
-
+        profile_picture = cleaned_data.get("profile_picture")
+        if not profile_picture:
+            self.add_error("profile_picture", "Please upload a profile picture.")
         return cleaned_data  # important to return it
     def clean_email(self):
         email = self.cleaned_data.get('email')

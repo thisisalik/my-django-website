@@ -1,5 +1,3 @@
-console.log("🔥 JS loaded at all?");
-
 document.addEventListener('DOMContentLoaded', function () {
     const cities = [
    
@@ -81,7 +79,8 @@ document.addEventListener('DOMContentLoaded', function () {
         suggestionsBox.style.display = 'block';
       }, 10);  // <- this small delay gives layout time to update
     });
-    
+
+
     
   });
   

@@ -32,8 +32,28 @@
     <p><label for="id_gender">Gender:</label> {{ form.gender }}</p>
 
 
-    <p><label for="id_profile_picture">Profile picture:</label> {{ form.profile_picture }}</p>
-
+    <p>
+        <label for="id_profile_picture">Profile picture:</label><br>
+        <img id="current-profile-pic"
+             src="{{ form.instance.profile_picture.url }}"
+             alt="Current Profile Picture"
+             style="max-height: 120px; border-radius: 8px; display: block; margin-bottom: 10px;">
+      
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <span style="background: #eee; padding: 5px 10px; border-radius: 5px;">📷 Change image</span>
+          <input type="file" name="profile_picture" id="id_profile_picture" style="display: none;">
+        </label>
+      
+        {% if form.profile_picture.errors %}
+          <div style="color: red; margin-top: 5px;">{{ form.profile_picture.errors.0 }}</div>
+        {% endif %}
+      </p>
+      
+      
+      
+      
+          
+      
     <p><label for="id_preferred_gender">Preferred gender:</label> {{ form.preferred_gender }}</p>
 
 
@@ -116,7 +136,7 @@
                 <input type="hidden" name="delete_image_ids" id="delete_image_ids">
             {% elif letter.letter_type == "pdf" %}
                 {% if letter.pdf %}
-                    <p>📄 <a href="{{ letter.pdf.url }}" target="_blank">View PDF Letter</a></p>
+                <embed src="{{ letter.pdf.url }}" type="application/pdf" width="100%" height="350px" style="border: 1px solid #ccc; border-radius: 6px;" />
                 {% else %}
                     <p><em>No PDF uploaded yet.</em></p>
                 {% endif %}
@@ -156,6 +176,8 @@
 <br>
 <a href="{% url 'view_profile' %}" class="btn btn-secondary">← Back to Profile</a>
 <script src="{% static 'js/city_autocomplete.js' %}"></script>
+<script src="{% static 'js/profile_picture.js' %}"></script>
+<script src="{% static 'js/cities.json' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -280,4 +302,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+
 {% endblock %}

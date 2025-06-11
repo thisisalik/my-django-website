@@ -1,13 +1,20 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block content %}
 
 <h2 style="display: flex; align-items: center; gap: 10px;">
   My Profile
   {% if profile.profile_picture %}
-    <a href="{{ profile.profile_picture.url }}" target="_blank">
-      <img src="{{ profile.profile_picture.url }}" alt="Profile Picture"
-           style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-    </a>
+  <img src="{{ profile.profile_picture.url }}" alt="Profile Picture"
+  id="profilePic" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; cursor: pointer;">
+
+<!-- Modal (hidden by default) -->
+<div id="picModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+<img id="modalImg" src="{{ profile.profile_picture.url }}" style="max-width: 90%; max-height: 90%; border-radius: 12px;">
+</div>
+
   {% else %}
     👤
   {% endif %}
@@ -40,8 +47,9 @@
 
             {% elif letter.letter_type == "pdf" %}
                 {% if letter.pdf %}
-                    <p>📄 <a href="{{ letter.pdf.url }}" target="_blank">View PDF</a></p>
-                {% else %}
+                <embed src="{{ letter.pdf.url }}" type="application/pdf" width="100%" height="350px" style="border: 1px solid #ccc; border-radius: 6px;" />
+            </object>
+        </iframe>                {% else %}
                     <p><em>No PDF uploaded yet.</em></p>
                 {% endif %}
 
@@ -52,9 +60,10 @@
                             {% for image in images %}
                                 <div style="display: {% if forloop.first %}block{% else %}none{% endif %};"
                                      class="slide-group-{{ group_id }}" id="slide-{{ group_id }}-{{ forloop.counter }}">
-                                    <img src="{{ image.image.url }}" alt="Letter Image"
-                                         style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain;">
-                                </div>
+                                     <img src="{{ image.image.url }}" alt="Letter Image"
+                                     class="clickable-image"
+                                     style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain; cursor: pointer;">
+                                                                </div>
                             {% endfor %}
 
                             {% if images|length > 1 %}
@@ -129,5 +138,21 @@
     });
   });
 </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const pic = document.getElementById('profilePic');
+      const modal = document.getElementById('picModal');
+      const modalImg = document.getElementById('modalImg');
+  
+      pic.addEventListener('click', function () {
+        modal.style.display = 'flex';
+      });
+  
+      modal.addEventListener('click', function () {
+        modal.style.display = 'none';
+      });
+    });
+  </script>
+  <script src="{% static 'js/modal_image_viewer.js' %}"></script>
 
 {% endblock %}

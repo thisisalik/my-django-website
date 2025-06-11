@@ -18,7 +18,7 @@
           {% endfor %}
 
         {% elif letter.letter_type == "pdf" %}
-          <a href="{{ letter.pdf.url }}" target="_blank">📄 View PDF Letter</a>
+        <embed src="{{ letter.pdf.url }}" type="application/pdf" width="100%" height="350px" style="border: 1px solid #ccc; border-radius: 6px;" />
         {% endif %}
 
         <form method="post" action="{% url 'like_back' like.from_profile.id %}" style="display:inline;">

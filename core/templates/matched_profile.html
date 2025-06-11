@@ -1,12 +1,19 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block content %}
 
 <div style="display: flex; align-items: center; gap: 15px;">
   {% if profile.profile_picture %}
-    <a href="{{ profile.profile_picture.url }}" target="_blank">
-      <img src="{{ profile.profile_picture.url }}" alt="Profile Picture"
-           style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
-    </a>
+  <img src="{{ profile.profile_picture.url }}" alt="Profile Picture"
+  id="profilePic" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; cursor: pointer;">
+
+<!-- Modal (hidden by default) -->
+<div id="picModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+<img id="modalImg" src="{{ profile.profile_picture.url }}" style="max-width: 90%; max-height: 90%; border-radius: 12px;">
+</div>
+
   {% endif %}
   <h2>{{ profile.name }}'s Profile</h2>
 </div>
@@ -21,7 +28,7 @@
 
 {% else %}
   {% if letter.letter_type == 'pdf' %}
-    <a href="{{ letter.pdf.url }}" target="_blank">View PDF</a>
+  <embed src="{{ letter.pdf.url }}" type="application/pdf" width="100%" height="300px" style="border: 1px solid #ccc; border-radius: 6px;" />
 
   {% else %}
     {% if letter.letter_type == 'image' and letter.images.exists %}
@@ -30,7 +37,8 @@
           {% for image in images %}
             <div style="display: {% if forloop.first %}block{% else %}none{% endif %};" class="slide" id="slide-{{ forloop.counter }}">
               <img src="{{ image.image.url }}" alt="Letter Image"
-                   style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain;">
+     class="clickable-image"
+     style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain; cursor: pointer;">
             </div>
           {% endfor %}
 
@@ -78,5 +86,25 @@
 {% endif %}
 
 <a href="{% url 'message_view' profile.id %}">Start Chat</a>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const pic = document.getElementById('profilePic');
+    const modal = document.getElementById('picModal');
+    const modalImg = document.getElementById('modalImg');
+
+    pic.addEventListener('click', function () {
+      modal.style.display = 'flex';
+    });
+
+    modal.addEventListener('click', function () {
+      modal.style.display = 'none';
+    });
+  });
+</script>
+<script src="{% static 'js/modal_image_viewer.js' %}"></script>
+<div id="imageModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+     background-color: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+  <img id="modalImg" style="max-width: 90%; max-height: 90%; border-radius: 12px;">
+</div>
 
 {% endblock %}

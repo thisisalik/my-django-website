@@ -1,27 +1,98 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
 <h2>Browse Letters 💌</h2>
 
 {% if letter %}
-  <!-- Show letter based on type -->
-  {% if letter.letter_type == "text" %}
-    <p>{{ letter.text_content|linebreaksbr }}</p>
-  {% elif letter.letter_type == "image" %}
-    {% for img in letter.images.all %}
-      <img src="{{ img.image.url }}" width="300" style="margin-bottom: 10px; display:block;">
-    {% endfor %}
-  {% elif letter.letter_type == "pdf" %}
-    <a href="{{ letter.pdf.url }}" target="_blank">📄 Download PDF Letter</a>
-  {% endif %}
+  <div class="letter-card">
+    {% if letter.letter_type == "text" %}
+      <p>{{ letter.text_content|linebreaksbr }}</p>
+    {% elif letter.letter_type == "image" %}
+    <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <div style="position: relative; max-width: 400px; margin-top: 10px;">
+            {% with group_id="browse" %}
+              {% with images=letter.images.all %}
+                {% for image in images %}
+                  <div style="display: {% if forloop.first %}block{% else %}none{% endif %};"
+                       class="slide-group-{{ group_id }}" id="slide-{{ group_id }}-{{ forloop.counter }}">
+                    <img src="{{ image.image.url }}" alt="Letter Image"
+                         class="clickable-image"
+                         style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain;">
+                  </div>
+                {% endfor %}
+          
+                {% if images|length > 1 %}
+                  <button onclick="prevSlide('{{ group_id }}', {{ images|length }})" id="prevBtn-{{ group_id }}"
+                          style="position: absolute; left: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">&larr;</button>
+                  <button onclick="nextSlide('{{ group_id }}', {{ images|length }})" id="nextBtn-{{ group_id }}"
+                          style="position: absolute; right: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">&rarr;</button>
+                {% endif %}
+              {% endwith %}
+            {% endwith %}
+          </div>
+          
+      </div>
+      
+    {% elif letter.letter_type == "pdf" %}
+    <p style="margin-top: 10px;">
+        <embed src="{{ letter.pdf.url }}" type="application/pdf" width="100%" height="350px" style="border: 1px solid #ccc; border-radius: 6px;" />
+    </p>
+        {% endif %}
+  </div>
 
-  <!-- Like / Skip buttons -->
-  <form method="post" action="{% url 'react_to_letter' letter.id %}">
+  <form method="post" action="{% url 'react_to_letter' letter.id %}" style="margin-top: 20px;">
     {% csrf_token %}
-    <button name="liked" value="true">❤️ Like</button>
-    <button name="liked" value="false">❌ Skip</button>
+    <button name="liked" value="true" class="btn">❤️ Like</button>
+    <button name="liked" value="false" class="btn" style="margin-left: 10px;">❌ Skip</button>
   </form>
 {% else %}
   <p>No more letters available. Try again later.</p>
 {% endif %}
+<script src="{% static 'js/modal_image_viewer.js' %}"></script>
+<script>
+    const currentSlides = {};
+  
+    function showSlide(groupId, index, total) {
+      for (let i = 1; i <= total; i++) {
+        const slide = document.getElementById(`slide-${groupId}-${i}`);
+        if (slide) {
+          slide.style.display = (i === index) ? 'block' : 'none';
+        }
+      }
+  
+      const prevBtn = document.getElementById(`prevBtn-${groupId}`);
+      const nextBtn = document.getElementById(`nextBtn-${groupId}`);
+  
+      if (prevBtn) prevBtn.style.display = index === 1 ? 'none' : 'block';
+      if (nextBtn) nextBtn.style.display = index === total ? 'none' : 'block';
+  
+      currentSlides[groupId] = index;
+    }
+  
+    function nextSlide(groupId, total) {
+      if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+      if (currentSlides[groupId] < total) {
+        currentSlides[groupId]++;
+        showSlide(groupId, currentSlides[groupId], total);
+      }
+    }
+  
+    function prevSlide(groupId, total) {
+      if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+      if (currentSlides[groupId] > 1) {
+        currentSlides[groupId]--;
+        showSlide(groupId, currentSlides[groupId], total);
+      }
+    }
+  
+    document.addEventListener("DOMContentLoaded", () => {
+      const groupId = "browse";
+      const total = document.querySelectorAll(`.slide-group-${groupId}`).length;
+      if (total > 0) {
+        showSlide(groupId, 1, total);
+      }
+    });
+  </script>
+  
 {% endblock %}
