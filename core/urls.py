@@ -30,6 +30,7 @@ urlpatterns = [
     path('chats/', views.chat_list_view, name='chat_list'),
     path('messages/fetch/<int:profile_id>/', views.fetch_messages, name='fetch_messages'),
     path('notifications/live/', views.live_notifications, name='live_notifications'),
+    path("chats/partial/", views.chat_list_partial_view, name="chat_list_partial"),
 
 
 ]

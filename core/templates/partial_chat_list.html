@@ -1,0 +1,31 @@
+{% if matches %}
+  {% for match in matches %}
+    <div style="border: 1px solid #ccc; padding: 8px 12px; margin-bottom: 16px; border-radius: 8px;">
+      <p style="margin: 4px 0;"><strong>{{ match.name }}</strong>
+        {% if match.is_new_match %}
+          <span style="color: red; margin-left: 6px;">New</span>
+        {% elif match.has_unread %}
+          <span style="color: red; margin-left: 6px;">✉️ New</span>
+        {% endif %}
+      </p>
+
+      {% if match.last_message %}
+        <p style="margin: 4px 0; font-size: 14px;">{{ match.last_message|truncatechars:100 }}</p>
+      {% else %}
+        <p style="margin: 4px 0; font-size: 14px;"><em>No messages yet.</em></p>
+      {% endif %}
+
+      <form method="get" action="{% url 'message_view' match.id %}" style="display: inline;">
+        <button type="submit" style="background-color: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer;">
+          💬 Open Chat
+        </button>
+      </form>
+      <a href="{% url 'matched_profile' match.id %}" 
+         style="background-color: #007bff; color: white; text-decoration: none; padding: 6px 12px; border-radius: 5px; margin-left: 8px;">
+        👀 View Profile
+      </a>
+    </div>
+  {% endfor %}
+{% else %}
+  <p>No chats yet — go write a letter!</p>
+{% endif %}

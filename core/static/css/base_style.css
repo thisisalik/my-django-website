@@ -1,0 +1,146 @@
+/* ✅ Remove full-height stretch and flex layout */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: auto;
+}
+
+/* ✅ Base styling */
+body {
+  font-family: system-ui, sans-serif;
+  font-size: clamp(16px, 2.3vw, 18px);
+  line-height: 1.5;
+  background-color: #fff;
+  display: block;
+}
+
+/* ✅ Layout container */
+.container {
+  width: 92%;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 16px 10px;
+  box-sizing: border-box;
+  min-height: calc(100vh - 80px);
+}
+
+/* ✅ Section spacing */
+.section {
+  margin-bottom: 16px;
+}
+
+/* ✅ Letter box */
+.letter-card {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background-color: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+/* ✅ Link + button style */
+.button,
+button {
+  display: inline-block;
+  font-size: 1rem;
+  padding: 8px 12px;
+  margin: 6px 4px;
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background-color: #007bff;
+  color: white;
+}
+
+/* ✅ Mobile tweaks */
+@media (max-width: 600px) {
+  h1, h2, h3 {
+    font-size: 18px;
+  }
+
+  .button, button {
+    font-size: 14px;
+    padding: 7px 10px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 14px;
+  }
+
+  .letter-card {
+    padding: 10px;
+  }
+}
+
+/* ✅ Chat list container */
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* ✅ Chat thread form wrapper */
+.chat-thread {
+  padding: 0;
+  margin: 0;
+}
+
+/* ✅ Chat thread styled button */
+.chat-thread-button {
+  display: block;
+  width: 100%;
+  border: none;
+  background: #f5f5f5;
+  padding: 12px 16px;
+  text-align: left;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.chat-thread-button:hover {
+  background: #eaf2ff;
+}
+
+/* ✅ Darker style for unread chats */
+.chat-thread-button.unread {
+  background-color: #d8eefe;
+}
+
+/* ✅ Header inside chat thread */
+.chat-thread-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 17px;
+  margin-bottom: 6px;
+}
+
+/* ✅ User name style */
+.chat-name {
+  color: #222;
+  font-weight: 600;
+}
+
+/* ✅ Unread badge style */
+.chat-unread-badge {
+  font-size: 15px;
+  color: #dc3545;
+}
+
+/* ✅ Message preview snippet */
+.chat-thread-snippet {
+  font-size: 15px;
+  color: #444;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

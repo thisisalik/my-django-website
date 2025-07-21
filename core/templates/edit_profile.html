@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load custom_filters %}
 {% load static %}
+<link rel="stylesheet" href="{% static 'css/base_style.css' %}">
 
 {% block content %}
 <style>
@@ -175,9 +176,8 @@
 
 <br>
 <a href="{% url 'view_profile' %}" class="btn btn-secondary">← Back to Profile</a>
-<script src="{% static 'js/city_autocomplete.js' %}"></script>
+<script src="{% static '/js/city_autocomplete.js' %}?v={{ timestamp }}"></script>
 <script src="{% static 'js/profile_picture.js' %}"></script>
-<script src="{% static 'js/cities.json' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -302,5 +302,41 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+      const minSelect = document.getElementById('id_preferred_age_min');
+      const maxSelect = document.getElementById('id_preferred_age_max');
+  
+      function updateMaxOptions() {
+          const minAge = parseInt(minSelect.value);
+          Array.from(maxSelect.options).forEach(option => {
+              const val = parseInt(option.value);
+              option.disabled = val <= minAge;
+          });
+          // Auto-select valid value if current value invalid
+          if (parseInt(maxSelect.value) <= minAge) {
+              maxSelect.value = "";
+          }
+      }
+  
+      function updateMinOptions() {
+          const maxAge = parseInt(maxSelect.value);
+          Array.from(minSelect.options).forEach(option => {
+              const val = parseInt(option.value);
+              option.disabled = val >= maxAge;
+          });
+          if (parseInt(minSelect.value) >= maxAge) {
+              minSelect.value = "";
+          }
+      }
+  
+      if (minSelect && maxSelect) {
+          minSelect.addEventListener('change', updateMaxOptions);
+          maxSelect.addEventListener('change', updateMinOptions);
+          updateMaxOptions();
+          updateMinOptions();
+      }
+  });
+  </script>
+  
 {% endblock %}

@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.forms.widgets import ClearableFileInput
 
-CITIES_FILE_PATH = os.path.join(settings.BASE_DIR,  'staticfiles', 'js', 'cities.json')
+CITIES_FILE_PATH = os.path.join(settings.BASE_DIR, 'core', 'static', 'js', 'cities.json')
 with open(CITIES_FILE_PATH, encoding='utf-8') as f:
     VALID_CITIES = set(json.load(f))
 

@@ -19,6 +19,15 @@ from django.http import JsonResponse
 @login_required
 def live_notifications(request):
     profile = request.user.profile
+    active_chat_id = request.GET.get("active_chat_id")
+
+    unread_messages_qs = Message.objects.filter(receiver=profile, is_read=False)
+
+    # ✅ Exclude messages from currently active chat
+    if active_chat_id:
+        unread_messages_qs = unread_messages_qs.exclude(sender__id=active_chat_id)
+
+    unread_messages_count = unread_messages_qs.count()
 
     new_likes_count = LetterLike.objects.filter(
         to_letter__profile=profile,
@@ -27,7 +36,6 @@ def live_notifications(request):
         from_profile__in=LetterLike.objects.filter(from_profile=profile).values_list('to_letter__profile', flat=True)
     ).count()
 
-    unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
     unseen_matches_count = Match.objects.filter(
         Q(user1=profile, is_seen_by_user1=False) |
         Q(user2=profile, is_seen_by_user2=False)
@@ -38,6 +46,7 @@ def live_notifications(request):
         'unread_messages_count': unread_messages_count,
         'unseen_matches_count': unseen_matches_count,
     })
+
 
 @login_required
 def browse_letter(request):
@@ -562,32 +571,60 @@ def matched_profile_view(request, profile_id):
     letter = matched_profile.letter_set.order_by('-created_at').first()
     return render(request, 'matched_profile.html', {'profile': matched_profile, 'letter': letter})
 
+
+from django.utils import timezone
 @login_required
-def chat_list_view(request):
+def chat_list_partial_view(request):
+    return chat_list_view(request, partial=True)
+def chat_list_view(request, partial=False):
     profile = request.user.profile
 
-    # Get matched profiles
     matches = Match.objects.filter(user1=profile) | Match.objects.filter(user2=profile)
     matched_profiles = [m.user2 if m.user1 == profile else m.user1 for m in matches]
 
-    # Get list of profile IDs who sent unread messages
     unread_senders = set(
         Message.objects.filter(receiver=profile, is_read=False)
         .values_list('sender_id', flat=True)
     )
 
-    # Add a custom attribute to indicate unread messages
+    profiles_with_data = []
     for m in matched_profiles:
         m.has_unread = m.id in unread_senders
 
-    return render(request, 'chat_list.html', {
-        'matches': matched_profiles,
+        last_msg = Message.objects.filter(
+            sender__in=[profile, m],
+            receiver__in=[profile, m]
+        ).order_by('-timestamp').first()
+
+        m.last_message = last_msg.text if last_msg else ""
+        m.last_message_time = last_msg.timestamp if last_msg else None
+        m.is_new_match = last_msg is None
+
+        profiles_with_data.append(m)
+
+    from django.utils import timezone
+    far_future = timezone.now() + timezone.timedelta(days=365 * 100)
+
+    profiles_with_data.sort(
+        key=lambda p: p.last_message_time if p.last_message_time is not None else far_future,
+        reverse=True
+    )
+
+    context = {
+        'matches': profiles_with_data,
         'unread_messages_count': len(unread_senders),
         'unseen_matches_count': Match.objects.filter(
             Q(user1=profile, is_seen_by_user1=False) |
             Q(user2=profile, is_seen_by_user2=False)
         ).count()
-    })
+    }
+
+    if partial:
+        return render(request, 'partial_chat_list.html', context)
+    else:
+        return render(request, 'chat_list.html', context)
+
+
 
 
 @login_required
