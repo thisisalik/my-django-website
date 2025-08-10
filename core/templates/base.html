@@ -7,6 +7,44 @@
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/base_style.css' %}">
 </head>
+<div id="welcome-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index:9999;">
+  <div style="max-width: 450px; margin: 80px auto; background:white; padding: 25px; border-radius: 12px; text-align: left; font-size: 16px; line-height: 1.5;">
+    <h3 style="margin-top: 0;">👋 Welcome to Letter Connections!</h3>
+    
+    <p><strong>💌 Browse Letters</strong><br>
+    Here you’ll see personal letters written by others. No faces, no bios — just words and feelings.</p>
+    
+    <p><strong>🐢 Likes</strong><br>
+    These are people who liked your letter — they found something in your words that stood out.</p>
+    
+    <p><strong>💬 Matches & Chats</strong><br>
+    If you both like each other’s letter, you match. Then you can chat and finally see each other’s profiles.</p>
+
+    <hr style="margin: 15px 0;">
+
+    <p style="font-size: 14px; color: #444;">
+      You can’t see anyone’s profile info until you match — and they can’t see yours either. It’s all about emotional connection first. ✨
+    </p>
+
+    <div style="text-align: right; margin-top: 20px;">
+      <button onclick="dismissWelcome()" style="background: #444; color: white; padding: 6px 16px; border: none; border-radius: 5px; cursor: pointer;">Got it</button>
+    </div>
+  </div>
+</div>
+<script>
+  function dismissWelcome() {
+    localStorage.setItem('letterdating_welcome_seen', 'true');
+    document.getElementById('welcome-modal').style.display = 'none';
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const hasSeen = localStorage.getItem('letterdating_welcome_seen');
+    if (!hasSeen) {
+      document.getElementById('welcome-modal').style.display = 'block';
+    }
+  });
+</script>
+<script src="{% static 'js/pdf_viewer.js' %}?v={% now 'U' %}"></script>
 
 <body>
   <nav style="padding: 10px; background: #eee; display: flex; gap: 20px; align-items: center;">
@@ -54,7 +92,7 @@
     </form>
   </nav>
 
-  <!-- ✅ Removed extra spacing or bottom padding -->
+  <!-- ✅ Clean mobile container without fixed inline max-width -->
   <div class="container">
     {% block content %}
     {% endblock %}
@@ -90,5 +128,6 @@
     setInterval(updateNotifications, 5000);
     updateNotifications();
   </script>
+
 </body>
 </html>

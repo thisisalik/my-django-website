@@ -71,6 +71,8 @@ class ProfileForm(forms.ModelForm):
         ('friendship', 'Friendship'),
         ('fun', 'Just here for the experience / letters'),
     ]
+    preferred_age_min = forms.IntegerField(required=True, label="Preferred Min Age")
+    preferred_age_max = forms.IntegerField(required=True, label="Preferred Max Age")
 
     gender = forms.ChoiceField(choices=GENDER_CHOICES)
     preferred_gender = forms.ChoiceField(choices=PREFERRED_GENDER_CHOICES, required=False)
@@ -157,8 +159,8 @@ class FullRegisterForm(UserCreationForm):
         required=False
     )
 
-    preferred_age_min = forms.IntegerField(required=False, label="Preferred Minimum Age")
-    preferred_age_max = forms.IntegerField(required=False, label="Preferred Maximum Age")
+    preferred_age_min = forms.IntegerField(required=True, label="Preferred Minimum Age")
+    preferred_age_max = forms.IntegerField(required=True, label="Preferred Maximum Age")
 
     connection_types = forms.MultipleChoiceField(
         required=False,

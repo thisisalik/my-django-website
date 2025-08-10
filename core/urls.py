@@ -1,6 +1,9 @@
 # core/urls.py
 from django.urls import path
 from . import views
+from core.views import CustomLoginView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('letters/', views.browse_letter, name='browse_letter'),
@@ -11,7 +14,7 @@ urlpatterns = [
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('register/', views.register, name='register'),
     path('profile/', views.view_profile, name='view_profile'),
-
+    path('', views.home_redirect),
     # ✅ Letter edit/delete
     path('letter/edit/<int:letter_id>/', views.edit_letter, name='edit_letter'),
     path('letter/delete/<int:letter_id>/', views.delete_letter, name='delete_letter'),
@@ -31,6 +34,9 @@ urlpatterns = [
     path('messages/fetch/<int:profile_id>/', views.fetch_messages, name='fetch_messages'),
     path('notifications/live/', views.live_notifications, name='live_notifications'),
     path("chats/partial/", views.chat_list_partial_view, name="chat_list_partial"),
-
+    path('accounts/login/', CustomLoginView.as_view(), name='login')
 
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

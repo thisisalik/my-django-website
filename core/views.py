@@ -15,7 +15,11 @@ from .forms import (
 )
 from .models import Notification
 from django.http import JsonResponse
+from django.shortcuts import redirect
 
+@login_required
+def home_redirect(request):
+    return redirect('browse_letter') 
 @login_required
 def live_notifications(request):
     profile = request.user.profile
@@ -29,12 +33,26 @@ def live_notifications(request):
 
     unread_messages_count = unread_messages_qs.count()
 
+    # Exclude matched users from like count
+    matched_profiles = Match.objects.filter(
+        Q(user1=profile) | Q(user2=profile)
+    ).values_list('user1', 'user2')
+
+    matched_ids = set()
+    for u1, u2 in matched_profiles:
+        matched_ids.add(u1)
+        matched_ids.add(u2)
+    matched_ids.discard(profile.id)
+
     new_likes_count = LetterLike.objects.filter(
-        to_letter__profile=profile,
-        liked=True
+    to_letter__profile=profile,
+    liked=True
     ).exclude(
-        from_profile__in=LetterLike.objects.filter(from_profile=profile).values_list('to_letter__profile', flat=True)
+    from_profile__in=LetterLike.objects.filter(from_profile=profile).values_list('to_letter__profile', flat=True)
+    ).exclude(
+        from_profile__id__in=matched_ids
     ).count()
+
 
     unseen_matches_count = Match.objects.filter(
         Q(user1=profile, is_seen_by_user1=False) |
@@ -56,7 +74,19 @@ def browse_letter(request):
         return render(request, 'no_letter_uploaded.html')
 
     form = LetterFilterForm(request.GET or None)
-    letters = Letter.objects.exclude(profile=profile)
+    # Exclude own letters and letters from matched users
+    matched_profiles = Match.objects.filter(
+    Q(user1=profile) | Q(user2=profile)
+    ).values_list('user1', 'user2')
+
+    # Flatten and remove self
+    matched_ids = set()
+    for u1, u2 in matched_profiles:
+        matched_ids.add(u1)
+        matched_ids.add(u2)
+    matched_ids.discard(profile.id)
+
+    letters = Letter.objects.exclude(profile=profile).exclude(profile__id__in=matched_ids)
 
     if form.is_valid() and form.has_changed():
         gender = form.cleaned_data.get('gender')
@@ -100,8 +130,23 @@ def browse_letter(request):
     if profile.connection_types:
         letters = [l for l in letters if set(l.profile.connection_types or []) & set(profile.connection_types or [])]
 
-    # ✅ Pick the first result
-    letter = letters[0] if letters else None
+        # ✅ Order letters: same city first, then others (if user allows it)
+    if isinstance(letters, list):
+        # Already a Python list (after connection type filter)
+        same_city_letters = [l for l in letters if l.profile.location and l.profile.location.lower() == (profile.location or "").lower()]
+        other_city_letters = [l for l in letters if l not in same_city_letters]
+    else:
+        same_city_letters = letters.filter(profile__location__iexact=profile.location)
+        other_city_letters = letters.exclude(profile__location__iexact=profile.location)
+
+    same_city_letters = sorted(same_city_letters, key=lambda l: l.created_at or l.id, reverse=True)
+    other_city_letters = sorted(other_city_letters, key=lambda l: l.created_at or l.id, reverse=True)
+
+    # ✅ Combine
+    ordered_letters = list(same_city_letters) + list(other_city_letters)
+
+    # ✅ Pick the first
+    letter = ordered_letters[0] if ordered_letters else None
 
     # Counts
     unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
@@ -442,13 +487,26 @@ def delete_letter(request, letter_id):
 def likes_received(request):
     profile = request.user.profile
 
-    # Find users who liked this profile but haven't been responded to
+    # Get matched profiles
+    matched_profiles = Match.objects.filter(
+    Q(user1=profile) | Q(user2=profile)
+    ).values_list('user1', 'user2')
+
+    matched_ids = set()
+    for u1, u2 in matched_profiles:
+        matched_ids.add(u1)
+        matched_ids.add(u2)
+    matched_ids.discard(profile.id)
+
     likes = LetterLike.objects.filter(
         to_letter__profile=profile,
         liked=True
     ).exclude(
         from_profile__in=LetterLike.objects.filter(from_profile=profile).values_list('to_letter__profile', flat=True)
+    ).exclude(
+        from_profile__id__in=matched_ids
     )
+
 
     # ✅ Count unread messages and unseen matches (for 💬 badge)
     unread_messages_count = Message.objects.filter(receiver=profile, is_read=False).count()
@@ -646,3 +704,18 @@ def fetch_messages(request, profile_id):
     ).order_by('timestamp')
 
     return render(request, 'partial_messages.html', {'messages': messages_qs})
+
+from django.contrib.auth.views import LoginView
+
+class CustomLoginView(LoginView):
+    def form_valid(self, form):
+        remember_me = self.request.POST.get('remember_me')
+
+        # ✅ Set session expiry BEFORE calling parent logic
+        if not remember_me:
+            self.request.session.set_expiry(0)  # expires on browser close
+        else:
+            self.request.session.set_expiry(60 * 60 * 24 * 14)  # 2 weeks
+
+        # 🧠 Now let Django handle login and redirect
+        return super().form_valid(form)

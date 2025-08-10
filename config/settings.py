@@ -127,3 +127,7 @@ LOGIN_REDIRECT_URL = '/letters/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # We control it manually
+SESSION_COOKIE_AGE = 1800  # 30 minutes (only affects users who don't set expiry explicitly)
+# Allow embedding on the same origin so PDFs can render inline
+X_FRAME_OPTIONS = 'SAMEORIGIN'

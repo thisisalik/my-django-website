@@ -45,13 +45,13 @@
                     <p><em>No text available.</em></p>
                 {% endif %}
 
-            {% elif letter.letter_type == "pdf" %}
+                {% elif letter.letter_type == "pdf" %}
                 {% if letter.pdf %}
-                <embed src="{{ letter.pdf.url }}" type="application/pdf" width="100%" height="350px" style="border: 1px solid #ccc; border-radius: 6px;" />
-            </object>
-        </iframe>                {% else %}
+                    <div class="pdf-viewer" data-pdf-url="{{ letter.pdf.url }}"></div>
+                {% else %}
                     <p><em>No PDF uploaded yet.</em></p>
                 {% endif %}
+            
 
             {% elif letter.letter_type == "image" and letter.images.exists %}
                 <div style="position: relative; max-width: 400px; margin-top: 10px;">
