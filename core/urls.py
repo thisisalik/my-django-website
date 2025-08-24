@@ -23,8 +23,6 @@ urlpatterns = [
     path('likes/', views.likes_received, name='likes_received'),
     path('like_back/<int:profile_id>/', views.like_back, name='like_back'),
     path('reject_like/<int:profile_id>/', views.reject_like, name='reject_like'),
-    path('unmatch/<int:profile_id>/', views.unmatch, name='unmatch'),
-
     # ✅ Images
     path('letter/image/delete/<int:image_id>/', views.delete_letter_image, name='delete_letter_image'),
     path('letter/add_images/<int:letter_id>/', views.add_letter_images, name='add_letter_images'),  # ➕ New!
@@ -34,7 +32,8 @@ urlpatterns = [
     path('messages/fetch/<int:profile_id>/', views.fetch_messages, name='fetch_messages'),
     path('notifications/live/', views.live_notifications, name='live_notifications'),
     path("chats/partial/", views.chat_list_partial_view, name="chat_list_partial"),
-    path('accounts/login/', CustomLoginView.as_view(), name='login')
+    path('accounts/login/', CustomLoginView.as_view(), name='login'),
+    path('unmatch/<int:match_id>/', views.unmatch, name='unmatch'),
 
 ]
 

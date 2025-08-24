@@ -5,6 +5,8 @@ from django.contrib import messages
 from django.http import HttpResponseForbidden
 from .models import Letter, LetterImage, Profile, LetterLike, Match, Message
 from django.db.models import Q
+from django.views.decorators.http import require_POST
+
 import uuid  
 from .forms import (
     LetterForm,
@@ -199,25 +201,65 @@ def upload_letter(request):
         if existing_letter.letter_type == 'pdf' and existing_letter.pdf:
             return redirect('view_profile')
         if existing_letter.letter_type == 'image':
-            # Here's the fix: only block if the letter *still has* images
+            # Only block if the letter *still has* images
             if LetterImage.objects.filter(letter=existing_letter).exists():
                 return redirect('view_profile')
             else:
-                # Letter exists but empty → let user re-upload
-                existing_letter.delete()  # 💥 important: wipe it
+                existing_letter.delete()
                 messages.info(request, "Previous empty letter cleared. You can upload a new one.")
 
     # ✅ Handle letter creation
     if request.method == 'POST':
         form = LetterForm(request.POST, request.FILES)
-        if form.is_valid():
-            letter = form.save(commit=False)
-            letter.profile = profile
-            letter.save()
 
-            if letter.letter_type == 'image':
-                for img in request.FILES.getlist('images'):
-                    LetterImage.objects.create(letter=letter, image=img)
+        # ---- strict validation per selected type ----
+        lt = request.POST.get('letter_type')
+        text_content = (request.POST.get('text_content') or '').strip()
+        pdf = request.FILES.get('pdf')
+        images = request.FILES.getlist('images')
+
+        if lt == 'text':
+            if not text_content:
+                messages.error(request, "❌ Text letter cannot be empty.")
+                return render(request, 'upload_letter.html', {'form': form})
+
+        elif lt == 'pdf':
+            if not pdf:
+                messages.error(request, "❌ Please choose a PDF file.")
+                return render(request, 'upload_letter.html', {'form': form})
+            ct = (pdf.content_type or '').lower()
+            if not (ct == 'application/pdf' or pdf.name.lower().endswith('.pdf')):
+                messages.error(request, "❌ Selected file is not a PDF. Please choose a .pdf file.")
+                return render(request, 'upload_letter.html', {'form': form})
+
+        elif lt == 'image':
+            if not images:
+                messages.error(request, "❌ Please upload at least one image for an image letter.")
+                return render(request, 'upload_letter.html', {'form': form})
+            for f in images:
+                ct = (f.content_type or '').lower()
+                if not (ct.startswith('image/') or f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))):
+                    messages.error(request, "❌ Only image files are allowed for an Image letter.")
+                    return render(request, 'upload_letter.html', {'form': form})
+        else:
+            messages.error(request, "❌ Please pick a letter type.")
+            return render(request, 'upload_letter.html', {'form': form})
+
+        # ---- save like before ----
+        if form.is_valid():
+            if lt == 'text':
+                Letter.objects.create(profile=profile, letter_type='text', text_content=text_content)
+
+            elif lt == 'pdf':
+                Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+
+            elif lt == 'image':
+                letter = Letter.objects.create(profile=profile, letter_type='image')
+                for img in images:
+                    # double-guard (skip non-images silently)
+                    ct = (img.content_type or '').lower()
+                    if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+                        LetterImage.objects.create(letter=letter, image=img)
 
             messages.success(request, "✅ Letter uploaded successfully!")
             return redirect('view_profile')
@@ -240,14 +282,16 @@ def view_matches(request):
 
     return render(request, 'matches.html', {'matches': matched_profiles})
 
+from django.db.models import Q  # (you already have this import above)
+
 @login_required
 def message_view(request, profile_id):
     sender = request.user.profile
     receiver = get_object_or_404(Profile, id=profile_id)
 
-    matched = Match.objects.filter(
-        user1__in=[sender, receiver],
-        user2__in=[sender, receiver]
+    # ✅ Only allow chatting if there's an ACTIVE match
+    matched = Match.objects.filter(active=True).filter(
+        Q(user1__in=[sender, receiver], user2__in=[sender, receiver])
     ).exists()
 
     if not matched:
@@ -278,7 +322,6 @@ def message_view(request, profile_id):
 
     return render(request, 'messages.html', {'receiver': receiver, 'messages': messages_qs, 'form': form})
 
-from django.contrib import messages  # if not already imported
 
 @login_required
 def edit_profile(request):
@@ -377,8 +420,6 @@ def register(request):
         form = FullRegisterForm(request.POST, request.FILES)
         if form.is_valid():
             user = form.save(commit=False)
-
-            # ✅ Use email as username so login works
             user.username = form.cleaned_data['email']
             user.email = form.cleaned_data['email']
             user.save()
@@ -391,29 +432,55 @@ def register(request):
             profile.preferred_gender = form.cleaned_data.get('preferred_gender')
             profile.preferred_age_min = form.cleaned_data.get('preferred_age_min')
             profile.preferred_age_max = form.cleaned_data.get('preferred_age_max')
-            profile.location = form.cleaned_data.get('location')  # ✅ Save city
-            profile.only_same_city = bool(form.cleaned_data.get('only_same_city'))  # ✅ Save checkbox
-            profile.connection_types = request.POST.getlist('connection_types')  # ✅ Save connection types
-
+            profile.location = form.cleaned_data.get('location')
+            profile.only_same_city = bool(form.cleaned_data.get('only_same_city'))
+            profile.connection_types = request.POST.getlist('connection_types')
             profile.save()
 
-            # ✅ Only create a letter if actual content is provided
+            # ---- strict validation for initial letter ----
             letter_type = form.cleaned_data.get('letter_type')
-            text_content = form.cleaned_data.get('text_content', '').strip()
-            pdf = form.cleaned_data.get('pdf')
+            text_content = (form.cleaned_data.get('text_content') or '').strip()
+            pdf = request.FILES.get('pdf')
             images = request.FILES.getlist('images')
 
-            if letter_type and (text_content or pdf or images):
-                letter = Letter.objects.create(
-                    profile=profile,
-                    letter_type=letter_type,
-                    text_content=text_content,
-                    pdf=pdf
-                )
+            if letter_type:
+                if letter_type == 'text':
+                    if not text_content:
+                        messages.error(request, "❌ Please write your letter text.")
+                        return render(request, 'register.html', {'form': form, 'ages': ages})
 
-                if letter_type == 'image':
-                    for img in images:
-                        LetterImage.objects.create(letter=letter, image=img)
+                elif letter_type == 'pdf':
+                    if not pdf:
+                        messages.error(request, "❌ Please choose a PDF file.")
+                        return render(request, 'register.html', {'form': form, 'ages': ages})
+                    ct = (pdf.content_type or '').lower()
+                    if not (ct == 'application/pdf' or pdf.name.lower().endswith('.pdf')):
+                        messages.error(request, "❌ Selected file is not a PDF. Please choose a .pdf file.")
+                        return render(request, 'register.html', {'form': form, 'ages': ages})
+
+                elif letter_type == 'image':
+                    if not images:
+                        messages.error(request, "❌ Please choose at least one image.")
+                        return render(request, 'register.html', {'form': form, 'ages': ages})
+                    for f in images:
+                        ct = (f.content_type or '').lower()
+                        if not (ct.startswith('image/') or f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))):
+                            messages.error(request, "❌ Only image files are allowed for an Image letter.")
+                            return render(request, 'register.html', {'form': form, 'ages': ages})
+
+                # ---- create letter (same behavior as before) ----
+                if letter_type and (text_content or pdf or images):
+                    letter = Letter.objects.create(
+                        profile=profile,
+                        letter_type=letter_type,
+                        text_content=text_content if letter_type == 'text' else '',
+                        pdf=pdf if letter_type == 'pdf' else None
+                    )
+                    if letter_type == 'image':
+                        for img in images:
+                            ct = (img.content_type or '').lower()
+                            if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+                                LetterImage.objects.create(letter=letter, image=img)
 
             login(request, user)
             return redirect('browse_letter')
@@ -422,7 +489,7 @@ def register(request):
     else:
         form = FullRegisterForm()
         return render(request, 'register.html', {'form': form, 'ages': ages})
-
+    
 @login_required
 def view_profile(request):
     profile = request.user.profile
@@ -612,12 +679,14 @@ def matched_profile_view(request, profile_id):
     matched_profile = get_object_or_404(Profile, id=profile_id)
     viewer_profile = request.user.profile
 
-    # ✅ Find the match and mark it as seen by the viewer
+    # ✅ Only consider an ACTIVE match
     match = Match.objects.filter(
+        active=True,
         user1__in=[viewer_profile, matched_profile],
         user2__in=[viewer_profile, matched_profile]
     ).first()
 
+    # Mark seen (unchanged)
     if match:
         if match.user1 == viewer_profile and not match.is_seen_by_user1:
             match.is_seen_by_user1 = True
@@ -627,17 +696,28 @@ def matched_profile_view(request, profile_id):
             match.save()
 
     letter = matched_profile.letter_set.order_by('-created_at').first()
-    return render(request, 'matched_profile.html', {'profile': matched_profile, 'letter': letter})
+
+    return render(
+        request,
+        'matched_profile.html',
+        {'profile': matched_profile, 'letter': letter, 'match': match}
+    )
 
 
 from django.utils import timezone
+
 @login_required
 def chat_list_partial_view(request):
     return chat_list_view(request, partial=True)
+
 def chat_list_view(request, partial=False):
     profile = request.user.profile
 
-    matches = Match.objects.filter(user1=profile) | Match.objects.filter(user2=profile)
+    # ✅ Only active matches
+    matches = Match.objects.filter(active=True).filter(
+        Q(user1=profile) | Q(user2=profile)
+    )
+
     matched_profiles = [m.user2 if m.user1 == profile else m.user1 for m in matches]
 
     unread_senders = set(
@@ -671,7 +751,10 @@ def chat_list_view(request, partial=False):
     context = {
         'matches': profiles_with_data,
         'unread_messages_count': len(unread_senders),
+        # (Optional) also count only active unseen matches so badges ignore unmatched ones
         'unseen_matches_count': Match.objects.filter(
+            active=True
+        ).filter(
             Q(user1=profile, is_seen_by_user1=False) |
             Q(user2=profile, is_seen_by_user2=False)
         ).count()
@@ -683,7 +766,26 @@ def chat_list_view(request, partial=False):
         return render(request, 'chat_list.html', context)
 
 
+@login_required
+@require_POST
+def unmatch(request, match_id):
+    viewer_profile = request.user.profile
+    match = get_object_or_404(Match, id=match_id)
 
+    if match.user1 != viewer_profile and match.user2 != viewer_profile:
+        messages.error(request, "You’re not part of this match.")
+        return redirect('chat_list')
+
+    if match.active:
+        match.active = False
+        match.unmatched_at = timezone.now()
+        match.unmatched_by = viewer_profile
+        match.save()
+        messages.success(request, "You’ve unmatched.")
+    else:
+        messages.info(request, "This match is already closed.")
+
+    return redirect('chat_list')
 
 @login_required
 def fetch_messages(request, profile_id):
@@ -719,3 +821,4 @@ class CustomLoginView(LoginView):
 
         # 🧠 Now let Django handle login and redirect
         return super().form_valid(form)
+    

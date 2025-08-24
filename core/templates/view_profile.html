@@ -45,12 +45,138 @@
                     <p><em>No text available.</em></p>
                 {% endif %}
 
-                {% elif letter.letter_type == "pdf" %}
-                {% if letter.pdf %}
-                    <div class="pdf-viewer" data-pdf-url="{{ letter.pdf.url }}"></div>
-                {% else %}
-                    <p><em>No PDF uploaded yet.</em></p>
-                {% endif %}
+                {% elif letter.letter_type == "pdf" and letter.pdf %}
+{% with gid="p"|add:letter.id|stringformat:"s" %}
+  <style>
+    .pdf-card { border:1px solid #ddd;border-radius:12px;padding:12px; }
+    .pdf-toolbar { display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-bottom:10px; }
+    .pdf-btn { border:1px solid #ccc;background:#f6f6f6;padding:6px 10px;border-radius:8px;cursor:pointer;line-height:1;font-size:14px; }
+    .pdf-btn:disabled { opacity:.4;cursor:not-allowed; }
+    .pdf-badge { font-size:13px;color:#444;min-width:56px;text-align:center; }
+    .pdf-canvas-wrap { width:100%;max-height:40vh;overflow:auto;border-radius:8px;background:#fafafa;display:flex;justify-content:center;align-items:flex-start; }
+    .pdf-canvas-wrap::-webkit-scrollbar { height:8px;width:8px; }
+    .pdf-canvas-wrap::-webkit-scrollbar-thumb { background:#d0d0d0;border-radius:8px; }
+    @media (max-width:420px){
+      .pdf-card{padding:8px;border-radius:10px}
+      .pdf-toolbar{gap:6px;margin-bottom:6px}
+      .pdf-btn{padding:5px 8px;border-radius:7px;font-size:13px}
+      .pdf-badge{font-size:12px;min-width:48px}
+      .pdf-canvas-wrap{max-height:50vh}
+    }
+  </style>
+
+  <div class="pdf-card" id="pdfCard-{{ gid }}">
+    <div class="pdf-toolbar">
+      <button type="button" class="pdf-btn" id="prev-{{ gid }}">◀</button>
+      <span class="pdf-badge" id="pageLabel-{{ gid }}">1 / 1</span>
+      <button type="button" class="pdf-btn" id="next-{{ gid }}">▶</button>
+
+      <span style="width:12px;"></span>
+
+      <button type="button" class="pdf-btn" id="zoomOut-{{ gid }}">−</button>
+      <span class="pdf-badge" id="zoomLabel-{{ gid }}">100%</span>
+      <button type="button" class="pdf-btn" id="zoomIn-{{ gid }}">＋</button>
+      <button type="button" class="pdf-btn" id="fit-{{ gid }}">Fit</button>
+    </div>
+
+    <div class="pdf-canvas-wrap">
+      <canvas id="pdfCanvas-{{ gid }}"></canvas>
+    </div>
+  </div>
+
+  <script>
+    (function ensurePdfJs(){
+      if (window.pdfjsLib) return;
+      var s=document.createElement('script');
+      s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+      document.head.appendChild(s);
+    })();
+  </script>
+
+  <script>
+    (function initPDF{{ gid }}() {
+      const url        = "{{ letter.pdf.url }}";
+      const canvas     = document.getElementById('pdfCanvas-{{ gid }}');
+      const ctx        = canvas.getContext('2d');
+      const prevBtn    = document.getElementById('prev-{{ gid }}');
+      const nextBtn    = document.getElementById('next-{{ gid }}');
+      const zoomInBtn  = document.getElementById('zoomIn-{{ gid }}');
+      const zoomOutBtn = document.getElementById('zoomOut-{{ gid }}');
+      const fitBtn     = document.getElementById('fit-{{ gid }}');
+      const zoomLabel  = document.getElementById('zoomLabel-{{ gid }}');
+      const pageLabel  = document.getElementById('pageLabel-{{ gid }}');
+      const dpr        = window.devicePixelRatio || 1;
+
+      let pdfDoc=null, pageNum=1, pageCount=1, baseScale=1, scale=1, rendering=false;
+
+      function updateLabels(){
+        zoomLabel.textContent = Math.round(scale*100) + '%';
+        pageLabel.textContent = pageNum + ' / ' + pageCount;
+        prevBtn.disabled = (pageNum<=1);
+        nextBtn.disabled = (pageNum>=pageCount);
+      }
+
+      function fitToWidth(page){
+        const card = document.getElementById('pdfCard-{{ gid }}');
+        const wrap = card.querySelector('.pdf-canvas-wrap');
+        const available = wrap.clientWidth - 2;
+        const viewport1 = page.getViewport({ scale:1 });
+        baseScale = available / viewport1.width;
+        scale = baseScale;
+      }
+
+      function renderPage(){
+        if (rendering) return;
+        rendering = true;
+        pdfDoc.getPage(pageNum).then(page=>{
+          if (baseScale===1) fitToWidth(page);
+          const viewport = page.getViewport({ scale });
+          canvas.style.width = Math.round(viewport.width)+'px';
+          canvas.style.height = Math.round(viewport.height)+'px';
+          canvas.width = Math.round(viewport.width*dpr);
+          canvas.height = Math.round(viewport.height*dpr);
+          const transform = dpr!==1 ? [dpr,0,0,dpr,0,0] : null;
+          page.render({ canvasContext: ctx, viewport, transform }).promise.finally(()=>{
+            rendering=false; updateLabels();
+          });
+        });
+      }
+
+      function start(){
+        pdfjsLib.getDocument(url).promise.then(doc=>{
+          pdfDoc = doc; pageCount = doc.numPages; pageNum = 1;
+          renderPage();
+          const card = document.getElementById('pdfCard-{{ gid }}');
+          if ('ResizeObserver' in window){
+            const ro = new ResizeObserver(()=>{ baseScale=1; renderPage(); });
+            ro.observe(card);
+          } else {
+            window.addEventListener('resize', ()=>{ baseScale=1; renderPage(); });
+          }
+        }).catch(console.error);
+      }
+
+      function setWorker(){
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
+
+      if (window.pdfjsLib){ setWorker(); start(); }
+      else {
+        const iv = setInterval(()=>{
+          if (window.pdfjsLib){ clearInterval(iv); setWorker(); start(); }
+        }, 40);
+      }
+
+      zoomInBtn.addEventListener('click', ()=>{ scale=Math.min(scale+0.15,4); renderPage(); });
+      zoomOutBtn.addEventListener('click', ()=>{ scale=Math.max(scale-0.15,0.4); renderPage(); });
+      fitBtn.addEventListener('click', ()=>{ baseScale=1; renderPage(); });
+      prevBtn.addEventListener('click', ()=>{ if(pageNum>1){ pageNum--; renderPage(); } });
+      nextBtn.addEventListener('click', ()=>{ if(pageNum<pageCount){ pageNum++; renderPage(); } });
+    })();
+  </script>
+{% endwith %}
+
             
 
             {% elif letter.letter_type == "image" and letter.images.exists %}
@@ -89,60 +215,63 @@
 <br><br>
 <a href="{% url 'edit_profile' %}" class="btn btn-secondary">✏️ Edit Profile</a>
 
-<script>
-  const currentSlides = {};
 
-  function showSlide(groupId, index, total) {
-    for (let i = 1; i <= total; i++) {
-      const slide = document.getElementById(`slide-${groupId}-${i}`);
-      if (slide) {
-        slide.style.display = (i === index) ? 'block' : 'none';
+<script>
+    const currentSlides = {};
+  
+    function showSlide(groupId, index, total) {
+      for (let i = 1; i <= total; i++) {
+        const slide = document.getElementById(`slide-${groupId}-${i}`);
+        if (slide) {
+          slide.style.display = (i === index) ? 'block' : 'none';
+        }
+      }
+  
+      const prevBtn = document.getElementById(`prevBtn-${groupId}`);
+      const nextBtn = document.getElementById(`nextBtn-${groupId}`);
+  
+      if (prevBtn) prevBtn.style.display = index === 1 ? 'none' : 'block';
+      if (nextBtn) nextBtn.style.display = index === total ? 'none' : 'block';
+  
+      currentSlides[groupId] = index;
+    }
+  
+    function nextSlide(groupId, total) {
+      if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+      if (currentSlides[groupId] < total) {
+        currentSlides[groupId]++;
+        showSlide(groupId, currentSlides[groupId], total);
       }
     }
-
-    const prevBtn = document.getElementById(`prevBtn-${groupId}`);
-    const nextBtn = document.getElementById(`nextBtn-${groupId}`);
-
-    if (prevBtn) prevBtn.style.display = index === 1 ? 'none' : 'block';
-    if (nextBtn) nextBtn.style.display = index === total ? 'none' : 'block';
-
-    currentSlides[groupId] = index;
-  }
-
-  function nextSlide(groupId, total) {
-    if (!currentSlides[groupId]) currentSlides[groupId] = 1;
-    if (currentSlides[groupId] < total) {
-      currentSlides[groupId]++;
-      showSlide(groupId, currentSlides[groupId], total);
+  
+    function prevSlide(groupId, total) {
+      if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+      if (currentSlides[groupId] > 1) {
+        currentSlides[groupId]--;
+        showSlide(groupId, currentSlides[groupId], total);
+      }
     }
-  }
-
-  function prevSlide(groupId, total) {
-    if (!currentSlides[groupId]) currentSlides[groupId] = 1;
-    if (currentSlides[groupId] > 1) {
-      currentSlides[groupId]--;
-      showSlide(groupId, currentSlides[groupId], total);
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const groups = new Set();
-    document.querySelectorAll("[class^='slide-group-']").forEach(el => {
-      const match = el.className.match(/slide-group-(\d+)/);
-      if (match) groups.add(match[1]);
+  
+    document.addEventListener("DOMContentLoaded", () => {
+      const groups = new Set();
+      document.querySelectorAll("[class^='slide-group-']").forEach(el => {
+        const match = el.className.match(/slide-group-(\d+)/);
+        if (match) groups.add(match[1]);
+      });
+  
+      groups.forEach(groupId => {
+        const total = document.querySelectorAll(`.slide-group-${groupId}`).length;
+        showSlide(groupId, 1, total);
+      });
     });
-
-    groups.forEach(groupId => {
-      const total = document.querySelectorAll(`.slide-group-${groupId}`).length;
-      showSlide(groupId, 1, total);
-    });
-  });
-</script>
-<script>
+  </script>
+  <script>
     document.addEventListener('DOMContentLoaded', function () {
       const pic = document.getElementById('profilePic');
       const modal = document.getElementById('picModal');
       const modalImg = document.getElementById('modalImg');
+  
+      if (!pic || !modal || !modalImg) return;
   
       pic.addEventListener('click', function () {
         modal.style.display = 'flex';
@@ -153,6 +282,7 @@
       });
     });
   </script>
+  
   <script src="{% static 'js/modal_image_viewer.js' %}"></script>
 
 {% endblock %}

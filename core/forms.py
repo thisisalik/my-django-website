@@ -30,14 +30,29 @@ class LetterForm(forms.ModelForm):
         text_content = cleaned_data.get('text_content', '').strip()
         pdf = cleaned_data.get('pdf')
 
+        # --- Text validation ---
         if letter_type == 'text':
             if not text_content:
-                raise forms.ValidationError('You selected Text, but did not write anything.')
+                raise forms.ValidationError('❌ You selected Text, but did not write anything.')
             if len(text_content) < 4:
-                raise forms.ValidationError('Letter text must be at least 4 characters long.')
+                raise forms.ValidationError('❌ Letter text must be at least 4 characters long.')
 
-        if letter_type == 'pdf' and not pdf and not getattr(self.instance, 'pdf', None):
-            raise forms.ValidationError('You selected PDF, but did not upload a file.')
+        # --- PDF validation ---
+        if letter_type == 'pdf':
+            if not pdf and not getattr(self.instance, 'pdf', None):
+                raise forms.ValidationError('❌ You selected PDF, but did not upload a file.')
+            if pdf and not str(pdf.name).lower().endswith('.pdf'):
+                raise forms.ValidationError('❌ Please upload a valid PDF file.')
+
+        # --- Image validation ---
+        if letter_type == 'image':
+            images = self.files.getlist('images') if hasattr(self, 'files') else []
+            if not images and not getattr(self.instance, 'images', None):
+                raise forms.ValidationError('❌ Please upload at least one image.')
+            for img in images:
+                if not img.content_type.startswith('image/'):
+                    raise forms.ValidationError('❌ Only image files are allowed for image letters.')
+
         return cleaned_data
 
 class MessageForm(forms.ModelForm):
@@ -190,6 +205,7 @@ class FullRegisterForm(UserCreationForm):
             'preferred_gender', 'preferred_age_min', 'preferred_age_max',
             'connection_types', 'location',
             'letter_type', 'text_content', 'pdf',
+            'agree_to_share',
         ]
 
     def clean_connection_types(self):
@@ -223,6 +239,10 @@ class FullRegisterForm(UserCreationForm):
         if User.objects.filter(email=email).exists():
             raise ValidationError("🚫 This email address is already in use. Try logging in instead.")
         return email
+    agree_to_share = forms.BooleanField(
+        required=True,
+        label="We will share your information with your potential matches. Do you agree with that?"
+    )
 class LetterImageForm(forms.ModelForm):
     class Meta:
         model = LetterImage

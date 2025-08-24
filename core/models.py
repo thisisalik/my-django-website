@@ -51,12 +51,19 @@ class Match(models.Model):
     user2 = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='match_user2')
     timestamp = models.DateTimeField(auto_now_add=True)
 
+    # seen flags (as you already have)
     is_seen_by_user1 = models.BooleanField(default=False)
     is_seen_by_user2 = models.BooleanField(default=False)
 
+    # ✅ NEW: support soft unmatch
+    active = models.BooleanField(default=True)
+    unmatched_at = models.DateTimeField(null=True, blank=True)
+    unmatched_by = models.ForeignKey(
+        Profile, null=True, blank=True, on_delete=models.SET_NULL, related_name='unmatches_done'
+    )
+
     class Meta:
         unique_together = ('user1', 'user2')
-
 class Message(models.Model):
     sender = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='sent_messages')
     receiver = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='received_messages')

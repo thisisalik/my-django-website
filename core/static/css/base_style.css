@@ -176,39 +176,3 @@ hr { margin: 14px 0; }
   box-shadow: 0 1px 10px rgba(0,0,0,.03);
 }
 
-/* PDF viewer: compact toolbar + smaller chrome */
-.pdf-card { padding: 8px; border-radius: 12px; }
-.pdf-toolbar {
-  display: flex;
-  justify-content: space-between;   /* left/right groups */
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.pdf-toolbar .group { display: inline-flex; align-items: center; gap: 6px; }
-.pdf-btn {
-  padding: 4px 8px;
-  font-size: 13px;
-  border: 1px solid #dcdcdc;
-  background: #f7f7f7;
-  border-radius: 8px;
-  line-height: 1;
-}
-.pdf-badge { font-size: 12px; color: #444; min-width: 52px; text-align: center; }
-
-/* Keep the page short: show less height but allow scroll inside the card */
-.pdf-canvas-wrap {
-  max-height: 40vh;                 /* was tall; this keeps it compact */
-  overflow: auto;
-  border-radius: 8px;
-  background: #fafafa;
-}
-
-/* Mobile compaction */
-@media (max-width: 600px) {
-  .container { max-width: 420px; }
-  .profile-grid { grid-template-columns: 1fr 1fr; gap: 4px 12px; }
-  .pdf-canvas-wrap { max-height: 40vh; }
-  .pdf-btn { padding: 3px 7px; font-size: 12.5px; }
-  .pdf-badge { font-size: 12px; min-width: 46px; }
-}

@@ -121,18 +121,29 @@
 
     <div id="image_upload_div" style="display:none;">
       <label for="images">Upload Images:</label><br>
-      <input type="file" name="images" multiple>
+      <input type="file" name="images" multiple accept="image/*">
     </div>
 
     <div id="pdf_upload_div" style="display:none;">
       <label for="id_pdf">Upload PDF:</label><br>
-      {{ form.pdf }}
-    </div>
+      <input type="file" name="pdf" id="id_pdf" accept=".pdf,application/pdf">
+      {% if form.pdf.errors %}
+        <div style="color:red; margin-top:5px;">{{ form.pdf.errors.0 }}</div>
+      {% endif %}
+          </div>
     <br>
   </div>
+  <p style="margin-top: 15px;">
+    <label for="id_agree_to_share">
+      {{ form.agree_to_share }} {{ form.agree_to_share.label }}
+    </label>
+    {% if form.agree_to_share.errors %}
+      <div style="color: red; margin-top: 5px;">{{ form.agree_to_share.errors.0 }}</div>
+    {% endif %}
+  </p>
 
   <br><br>
-  <button type="submit" class="btn btn-success">📝 Register</button>
+  <button type="submit" class="btn btn-success" id="registerBtn" disabled>📝 Register</button>
 </form>
 
 <p style="margin-top: 20px;">Already have an account? <a href="/accounts/login/">Login</a></p>
@@ -226,5 +237,109 @@
         }
     });
     </script>
+<script>
+    (function () {
+      const btn = document.getElementById('registerBtn');
     
+      const cityInput = document.getElementById('id_location');
+      const agreeCheckbox = document.getElementById('id_agree_to_share');
+      const skipCheckbox = document.getElementById('skip_upload_checkbox');
+      const letterTypeSelect = document.getElementById('id_letter_type');
+      const textInput = document.getElementById('id_text_content');
+      const imagesInput = document.querySelector("input[name='images']");
+      const pdfInput = document.getElementById('id_pdf');
+      const pwd1 = document.getElementById('id_password1');
+      const pwd2 = document.getElementById('id_password2');
+    
+      // Place to show password mismatch error
+      let pwdError = document.createElement('div');
+      pwdError.style.color = 'red';
+      pwdError.style.marginTop = '5px';
+      if (pwd2 && !pwd2.nextElementSibling) {
+        pwd2.parentNode.appendChild(pwdError);
+      }
+    
+      function connectionTypesOk() {
+        return document.querySelectorAll("input[name='connection_types']:checked").length > 0;
+      }
+    
+      function nonEmpty(v){ return !!(v && v.trim().length); }
+    
+      function letterValid() {
+        if (skipCheckbox && skipCheckbox.checked) return true;
+    
+        if (!letterTypeSelect || !nonEmpty(letterTypeSelect.value)) return false;
+        const t = letterTypeSelect.value;
+    
+        if (t === 'text') {
+          return !!(textInput && textInput.value.trim().length >= 4);
+        } else if (t === 'image') {
+          return !!(imagesInput && imagesInput.files && imagesInput.files.length > 0);
+        } else if (t === 'pdf') {
+          return !!(pdfInput && pdfInput.files && pdfInput.files.length > 0);
+        }
+        return false;
+      }
+    
+      function passwordsMatch() {
+        if (!pwd1 || !pwd2) return false;
+        if (pwd1.value === '' || pwd2.value === '') return false;
+        return pwd1.value === pwd2.value;
+      }
+    
+      function requirementsMet() {
+        const cityOk = !!(cityInput && nonEmpty(cityInput.value));
+        const agreeOk = !!(agreeCheckbox && agreeCheckbox.checked);
+        const connOk = connectionTypesOk();
+        const letterOk = letterValid();
+        const pwdOk = passwordsMatch();
+        return cityOk && agreeOk && connOk && letterOk && pwdOk;
+      }
+    
+      function updateBtn() {
+        const ok = requirementsMet();
+    
+        // show / hide password mismatch error
+        if (pwd1 && pwd2 && pwdError) {
+          if (pwd1.value && pwd2.value && pwd1.value !== pwd2.value) {
+            pwdError.textContent = "❌ Passwords do not match.";
+          } else {
+            pwdError.textContent = "";
+          }
+        }
+    
+        btn.disabled = !ok;
+        btn.style.opacity = ok ? '' : '0.6';
+        btn.style.cursor = ok ? '' : 'not-allowed';
+      }
+    
+      function listen(el, ev) { if (el) el.addEventListener(ev, updateBtn); }
+    
+      document.addEventListener('DOMContentLoaded', function () {
+        listen(cityInput, 'input');
+        listen(agreeCheckbox, 'change');
+        listen(skipCheckbox, 'change');
+        listen(letterTypeSelect, 'change');
+        listen(textInput, 'input');
+        listen(imagesInput, 'change');
+        listen(pdfInput, 'change');
+        listen(pwd1, 'input');
+        listen(pwd2, 'input');
+        document.querySelectorAll("input[name='connection_types']").forEach(el => {
+          el.addEventListener('change', updateBtn);
+        });
+        updateBtn(); // initial
+      });
+    
+      document.querySelector('form').addEventListener('submit', function (e) {
+        if (!requirementsMet()) {
+          e.preventDefault();
+          alert("❌ Please complete all required fields: City, Connection type, Agree, Letter, and matching Passwords.");
+        }
+      });
+    })();
+    </script>
+    
+    
+      
 {% endblock %}

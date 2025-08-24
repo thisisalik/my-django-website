@@ -6,24 +6,41 @@
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
 
+    {# 🔴 show form-wide errors (like "Please upload at least one image") #}
+    {% if form.non_field_errors %}
+      <div style="color:#c00; margin-bottom:10px;">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+
     <label for="id_letter_type">Letter Type:</label><br>
     {{ form.letter_type }}
+    {% if form.letter_type.errors %}
+      <div style="color:#c00">{{ form.letter_type.errors|join:", " }}</div>
+    {% endif %}
     <br><br>
 
     <div id="text_content_div" style="display:none;">
         <label for="id_text_content">Text Content:</label><br>
         {{ form.text_content }}
+        {% if form.text_content.errors %}
+          <div style="color:#c00">{{ form.text_content.errors|join:", " }}</div>
+        {% endif %}
     </div>
 
     <div id="image_upload_div" style="display:none;">
         <label for="images">Upload Images:</label><br>
-        <!-- ✅ Multiple image upload field -->
-        <input type="file" name="images" id="id_images" multiple>
+        <!-- ✅ multiple + restrict to images -->
+        <input type="file" name="images" id="id_images" multiple accept="image/*">
     </div>
 
     <div id="pdf_upload_div" style="display:none;">
         <label for="id_pdf">Upload PDF:</label><br>
-        {{ form.pdf }}
+        <!-- ✅ restrict to PDF only -->
+        <input type="file" name="pdf" id="id_pdf" accept=".pdf,application/pdf">
+        {% if form.pdf.errors %}
+          <div style="color:#c00">{{ form.pdf.errors|join:", " }}</div>
+        {% endif %}
     </div>
 
     <br>
