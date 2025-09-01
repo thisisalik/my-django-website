@@ -23,15 +23,16 @@ STATICFILES_DIRS = [
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+
 # ✅ Env-driven (safe in prod, works in dev)
 SECRET_KEY = os.getenv(
     "SECRET_KEY",
     "django-insecure-v(r1)!2rr1q#l90x(_0k5@!y67f*&1#ogs+qq7ukm-9k3#2)(9"
 )
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "True").lower() == "true"
-
 
 ALLOWED_HOSTS = (
     os.getenv("ALLOWED_HOSTS", "").split(",")
@@ -39,6 +40,19 @@ ALLOWED_HOSTS = (
     else []
 )
 
+# dev defaults so runserver keeps working locally
+for h in [".localhost", "127.0.0.1", "[::1]"]:
+    if h not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(h)
+
+# from env (comma-separated)
+env_hosts = os.getenv("ALLOWED_HOSTS", "")
+if env_hosts:
+    ALLOWED_HOSTS += [h.strip() for h in env_hosts.split(",") if h.strip()]
+
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+]
 
 # Add Render’s hostname automatically (saves you from DisallowedHost if env var missing)
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
@@ -53,9 +67,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     if origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(origin)
 
-CSRF_TRUSTED_ORIGINS = [
-    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
-]
+
 # Application definition
 
 INSTALLED_APPS = [
