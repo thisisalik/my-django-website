@@ -205,3 +205,4 @@ LOGGING = {
         "django.template": {"handlers": ["console"], "level": "ERROR", "propagate": False},
     },
 }
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
