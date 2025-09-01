@@ -15,6 +15,7 @@ import os
 import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+TEMPLATES_DIR = BASE_DIR / "templates"
 
 STATICFILES_DIRS = [
     BASE_DIR / "core/static",  
@@ -97,7 +98,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [TEMPLATES_DIR],   # 👈 add this
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -105,12 +106,12 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-
                 'core.context_processors.global_notifications',
             ],
         },
     },
 ]
+
 
 
 WSGI_APPLICATION = 'config.wsgi.application'
