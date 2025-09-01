@@ -40,6 +40,19 @@ ALLOWED_HOSTS = (
 )
 
 
+# Add Render’s hostname automatically (saves you from DisallowedHost if env var missing)
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME:
+    # e.g. "my-django-website-oz32.onrender.com"
+    if RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Also add to CSRF_TRUSTED_ORIGINS if not already there
+if RENDER_EXTERNAL_HOSTNAME:
+    origin = f"https://{RENDER_EXTERNAL_HOSTNAME}"
+    if origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
+
 CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
 ]
