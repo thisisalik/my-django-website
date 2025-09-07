@@ -419,9 +419,9 @@ def register(request):
     if request.method == 'POST':
         form = FullRegisterForm(request.POST, request.FILES)
         if not form.is_valid():
-            # 👇 these two lines make the problem visible immediately
-            print("REGISTER FORM ERRORS:", form.errors.as_json())  # goes to Render logs
-            messages.error(request, form.errors)                   # shows on the page
+            # 👇 keep your visibility helpers
+            print("REGISTER FORM ERRORS:", form.errors.as_json())
+            messages.error(request, form.errors)
             return render(request, 'register.html', {'form': form, 'ages': ages})
 
         if form.is_valid():
@@ -443,50 +443,55 @@ def register(request):
             profile.connection_types = request.POST.getlist('connection_types')
             profile.save()
 
+            # ✅ NEW: respect "I'll upload later"
+            skip_letter = request.POST.get('skip_letter') in ('1', 'on', 'true', 'True')
+
             # ---- strict validation for initial letter ----
-            letter_type = form.cleaned_data.get('letter_type')
-            text_content = (form.cleaned_data.get('text_content') or '').strip()
-            pdf = request.FILES.get('pdf')
-            images = request.FILES.getlist('images')
+            if not skip_letter:
+                letter_type = form.cleaned_data.get('letter_type')
+                text_content = (form.cleaned_data.get('text_content') or '').strip()
+                pdf = request.FILES.get('pdf')
+                images = request.FILES.getlist('images')
 
-            if letter_type:
-                if letter_type == 'text':
-                    if not text_content:
-                        messages.error(request, "❌ Please write your letter text.")
-                        return render(request, 'register.html', {'form': form, 'ages': ages})
-
-                elif letter_type == 'pdf':
-                    if not pdf:
-                        messages.error(request, "❌ Please choose a PDF file.")
-                        return render(request, 'register.html', {'form': form, 'ages': ages})
-                    ct = (pdf.content_type or '').lower()
-                    if not (ct == 'application/pdf' or pdf.name.lower().endswith('.pdf')):
-                        messages.error(request, "❌ Selected file is not a PDF. Please choose a .pdf file.")
-                        return render(request, 'register.html', {'form': form, 'ages': ages})
-
-                elif letter_type == 'image':
-                    if not images:
-                        messages.error(request, "❌ Please choose at least one image.")
-                        return render(request, 'register.html', {'form': form, 'ages': ages})
-                    for f in images:
-                        ct = (f.content_type or '').lower()
-                        if not (ct.startswith('image/') or f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))):
-                            messages.error(request, "❌ Only image files are allowed for an Image letter.")
+                if letter_type:
+                    if letter_type == 'text':
+                        if not text_content:
+                            messages.error(request, "❌ Please write your letter text.")
                             return render(request, 'register.html', {'form': form, 'ages': ages})
 
-                # ---- create letter (same behavior as before) ----
-                if letter_type and (text_content or pdf or images):
-                    letter = Letter.objects.create(
-                        profile=profile,
-                        letter_type=letter_type,
-                        text_content=text_content if letter_type == 'text' else '',
-                        pdf=pdf if letter_type == 'pdf' else None
-                    )
-                    if letter_type == 'image':
-                        for img in images:
-                            ct = (img.content_type or '').lower()
-                            if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
-                                LetterImage.objects.create(letter=letter, image=img)
+                    elif letter_type == 'pdf':
+                        if not pdf:
+                            messages.error(request, "❌ Please choose a PDF file.")
+                            return render(request, 'register.html', {'form': form, 'ages': ages})
+                        ct = (pdf.content_type or '').lower()
+                        if not (ct == 'application/pdf' or pdf.name.lower().endswith('.pdf')):
+                            messages.error(request, "❌ Selected file is not a PDF. Please choose a .pdf file.")
+                            return render(request, 'register.html', {'form': form, 'ages': ages})
+
+                    elif letter_type == 'image':
+                        if not images:
+                            messages.error(request, "❌ Please choose at least one image.")
+                            return render(request, 'register.html', {'form': form, 'ages': ages})
+                        for f in images:
+                            ct = (f.content_type or '').lower()
+                            if not (ct.startswith('image/') or f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))):
+                                messages.error(request, "❌ Only image files are allowed for an Image letter.")
+                                return render(request, 'register.html', {'form': form, 'ages': ages})
+
+                    # ---- create letter (same behavior as before) ----
+                    if letter_type and (text_content or pdf or images):
+                        letter = Letter.objects.create(
+                            profile=profile,
+                            letter_type=letter_type,
+                            text_content=text_content if letter_type == 'text' else '',
+                            pdf=pdf if letter_type == 'pdf' else None
+                        )
+                        if letter_type == 'image':
+                            for img in images:
+                                ct = (img.content_type or '').lower()
+                                if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+                                    LetterImage.objects.create(letter=letter, image=img)
+            # if skipping: do nothing with letters
 
             login(request, user)
             return redirect('browse_letter')
@@ -495,7 +500,7 @@ def register(request):
     else:
         form = FullRegisterForm()
         return render(request, 'register.html', {'form': form, 'ages': ages})
-    
+
 @login_required
 def view_profile(request):
     profile = request.user.profile

@@ -10,11 +10,16 @@
 
 <h2>Create Account</h2>
 {% if messages %}
-  <ul class="messages" style="color:#c00; margin:10px 0 20px; padding-left:18px;">
-    {% for m in messages %}
-      <li>{{ m }}</li>
+  <div style="margin: 10px 0;">
+    {% for message in messages %}
+      <div style="padding:10px;border-radius:8px; margin-bottom:8px;
+                  {% if message.tags == 'error' %}background:#ffe8e8;color:#b00020;border:1px solid #f5b5b5;
+                  {% elif message.tags == 'success' %}background:#eaf8ea;color:#1b7a1b;border:1px solid #b7e1b7;
+                  {% else %}background:#f1f1f1;color:#333;border:1px solid #ddd;{% endif %}">
+        {{ message }}
+      </div>
     {% endfor %}
-  </ul>
+  </div>
 {% endif %}
 <div style="margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 10px;">
     <strong>Connect through emotion — not just photos.</strong><br><br>
@@ -29,6 +34,12 @@
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
   {{ form.non_field_errors }}
+  {% if form.errors %}
+  <div style="margin:10px 0;padding:10px;border:1px solid #f5b5b5;background:#ffe8e8;border-radius:8px;">
+    <strong>There are errors in your submission:</strong>
+    {{ form.errors }}
+  </div>
+{% endif %}
 
   <p><label for="id_name">Name:</label> {{ form.name }}</p>
   <p>
@@ -112,8 +123,9 @@
   <!-- ✅ Add Your Letter section with toggle -->
   <p><strong>Add Your Letter:</strong></p>
   <p>
-    <input type="checkbox" id="skip_upload_checkbox">
-    <label for="skip_upload_checkbox">I’ll upload my letter later</label>
+    <input type="checkbox" id="skip_upload_checkbox" name="skip_letter" value="1">
+<label for="skip_upload_checkbox">I’ll upload my letter later</label>
+
   </p>
 
   <div id="letter_upload_section">
