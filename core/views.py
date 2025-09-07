@@ -418,6 +418,12 @@ def register(request):
 
     if request.method == 'POST':
         form = FullRegisterForm(request.POST, request.FILES)
+        if not form.is_valid():
+            # 👇 these two lines make the problem visible immediately
+            print("REGISTER FORM ERRORS:", form.errors.as_json())  # goes to Render logs
+            messages.error(request, form.errors)                   # shows on the page
+            return render(request, 'register.html', {'form': form, 'ages': ages})
+
         if form.is_valid():
             user = form.save(commit=False)
             user.username = form.cleaned_data['email']
