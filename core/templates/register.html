@@ -9,6 +9,13 @@
 </style>
 
 <h2>Create Account</h2>
+{% if messages %}
+  <ul class="messages" style="color:#c00; margin:10px 0 20px; padding-left:18px;">
+    {% for m in messages %}
+      <li>{{ m }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
 <div style="margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 10px;">
     <strong>Connect through emotion — not just photos.</strong><br><br>
     On this platform, you share a <strong>letter about yourself</strong>:<br>
@@ -92,8 +99,6 @@
 {% if form.connection_types.errors %}
 <div style="color: red; margin-bottom: 5px;">{{ form.connection_types.errors.0 }}</div>
 {% endif %}
-  </div>
-  </p>
   <p style="margin-top: 20px;"><strong>How to share your letter:</strong></p>
   <ul style="margin-bottom: 15px;">
     <li>✍️ You can <strong>write it directly</strong> on the site.</li>
