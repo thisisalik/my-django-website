@@ -412,37 +412,20 @@ def edit_profile(request):
 
 from django.contrib.auth import login
 import uuid  # already in your code
-
 def register(request):
     ages = range(18, 101)
 
     if request.method == 'POST':
         form = FullRegisterForm(request.POST, request.FILES)
+
         if form.is_valid():
-            user = form.save(commit=False)
-            user.username = form.cleaned_data['email']
-            user.email = form.cleaned_data['email']
-            user.save()
+            # ---- Validate the initial letter BEFORE saving the user ----
+            letter_type   = form.cleaned_data.get('letter_type')
+            text_content  = (form.cleaned_data.get('text_content') or '').strip()
+            pdf           = request.FILES.get('pdf')
+            images        = request.FILES.getlist('images')
 
-            profile = user.profile
-            profile.name = form.cleaned_data['name']
-            profile.age = form.cleaned_data['age']
-            profile.gender = form.cleaned_data['gender']
-            profile.profile_picture = form.cleaned_data.get('profile_picture')
-            profile.preferred_gender = form.cleaned_data.get('preferred_gender')
-            profile.preferred_age_min = form.cleaned_data.get('preferred_age_min')
-            profile.preferred_age_max = form.cleaned_data.get('preferred_age_max')
-            profile.location = form.cleaned_data.get('location')
-            profile.only_same_city = bool(form.cleaned_data.get('only_same_city'))
-            profile.connection_types = request.POST.getlist('connection_types')
-            profile.save()
-
-            # ---- strict validation for initial letter ----
-            letter_type = form.cleaned_data.get('letter_type')
-            text_content = (form.cleaned_data.get('text_content') or '').strip()
-            pdf = request.FILES.get('pdf')
-            images = request.FILES.getlist('images')
-
+            # Strict checks (same logic as you already had)
             if letter_type:
                 if letter_type == 'text':
                     if not text_content:
@@ -454,7 +437,7 @@ def register(request):
                         messages.error(request, "❌ Please choose a PDF file.")
                         return render(request, 'register.html', {'form': form, 'ages': ages})
                     ct = (pdf.content_type or '').lower()
-                    if not (ct == 'application/pdf' or pdf.name.lower().endswith('.pdf')):
+                    if not (ct == 'application/pdf' or (pdf.name or '').lower().endswith('.pdf')):
                         messages.error(request, "❌ Selected file is not a PDF. Please choose a .pdf file.")
                         return render(request, 'register.html', {'form': form, 'ages': ages})
 
@@ -464,11 +447,31 @@ def register(request):
                         return render(request, 'register.html', {'form': form, 'ages': ages})
                     for f in images:
                         ct = (f.content_type or '').lower()
-                        if not (ct.startswith('image/') or f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))):
+                        if not (ct.startswith('image/') or (f.name or '').lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))):
                             messages.error(request, "❌ Only image files are allowed for an Image letter.")
                             return render(request, 'register.html', {'form': form, 'ages': ages})
 
-                # ---- create letter (same behavior as before) ----
+            # ---- All validation passed; now save everything atomically ----
+            with transaction.atomic():
+                user = form.save(commit=False)
+                user.username = form.cleaned_data['email']
+                user.email = form.cleaned_data['email']
+                user.save()
+
+                profile = user.profile
+                profile.name = form.cleaned_data['name']
+                profile.age = form.cleaned_data['age']
+                profile.gender = form.cleaned_data['gender']
+                profile.profile_picture = form.cleaned_data.get('profile_picture')
+                profile.preferred_gender = form.cleaned_data.get('preferred_gender')
+                profile.preferred_age_min = form.cleaned_data.get('preferred_age_min')
+                profile.preferred_age_max = form.cleaned_data.get('preferred_age_max')
+                profile.location = form.cleaned_data.get('location')
+                profile.only_same_city = bool(form.cleaned_data.get('only_same_city'))
+                profile.connection_types = request.POST.getlist('connection_types')
+                profile.save()
+
+                # Create initial letter (if provided)
                 if letter_type and (text_content or pdf or images):
                     letter = Letter.objects.create(
                         profile=profile,
@@ -479,17 +482,19 @@ def register(request):
                     if letter_type == 'image':
                         for img in images:
                             ct = (img.content_type or '').lower()
-                            if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+                            if ct.startswith('image/') or (img.name or '').lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
                                 LetterImage.objects.create(letter=letter, image=img)
 
+            # Log in and go
             login(request, user)
             return redirect('browse_letter')
-        else:
-            return render(request, 'register.html', {'form': form, 'ages': ages})
-    else:
-        form = FullRegisterForm()
+
+        # form not valid
         return render(request, 'register.html', {'form': form, 'ages': ages})
-    
+
+    # GET
+    form = FullRegisterForm()
+    return render(request, 'register.html', {'form': form, 'ages': ages})   
 @login_required
 def view_profile(request):
     profile = request.user.profile
