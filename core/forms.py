@@ -161,6 +161,7 @@ class FullRegisterForm(UserCreationForm):
             ('Other', 'Other'),
         ]
     )
+    # keep required=True by default
     profile_picture = forms.ImageField(required=True, label="Profile picture")
 
     preferred_gender = forms.ChoiceField(
@@ -193,10 +194,11 @@ class FullRegisterForm(UserCreationForm):
     text_content = forms.CharField(widget=forms.Textarea, required=False, label="Letter Text")
     pdf = forms.FileField(required=False)
     only_same_city = forms.MultipleChoiceField(
-    required=False,
-    widget=forms.CheckboxSelectMultiple,
-    choices=[("yes", " Only show matches from my city")]
-)
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        choices=[("yes", " Only show matches from my city")]
+    )
+
     class Meta:
         model = User
         fields = [
@@ -207,6 +209,15 @@ class FullRegisterForm(UserCreationForm):
             'letter_type', 'text_content', 'pdf',
             'agree_to_share',
         ]
+
+    # NEW: conditionally relax the HTML/browser "required" only when a temp picture exists
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        temp_path = (self.data.get("temp_profile_picture") or "").strip() if hasattr(self, "data") else ""
+        if temp_path:
+            # don’t force the browser to re-upload; server will validate presence via temp
+            self.fields["profile_picture"].required = False
+            self.fields["profile_picture"].widget.attrs.pop("required", None)
 
     def clean_connection_types(self):
         data = self.cleaned_data.get('connection_types')
@@ -221,28 +232,35 @@ class FullRegisterForm(UserCreationForm):
         if commit:
             user.save()
         return user
-    
+
     def clean(self):
-        cleaned_data = super().clean()  # not leaned_data
+        cleaned_data = super().clean()
         location = cleaned_data.get("location", "").strip()
 
         if not location:
             self.add_error("location", "City is required.")
         elif location not in VALID_CITIES:
             self.add_error("location", "Please enter a valid city name")
+
+        # ✅ still required overall: must have either a fresh upload OR a stashed temp file
         profile_picture = cleaned_data.get("profile_picture")
-        if not profile_picture:
+        temp_path = (self.data.get("temp_profile_picture") or "").strip()
+        if not profile_picture and not temp_path:
             self.add_error("profile_picture", "Please upload a profile picture.")
-        return cleaned_data  # important to return it
+
+        return cleaned_data
+
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
             raise ValidationError("🚫 This email address is already in use. Try logging in instead.")
         return email
+
     agree_to_share = forms.BooleanField(
         required=True,
         label="We will share your information with your potential matches. Do you agree with that?"
     )
+
 class LetterImageForm(forms.ModelForm):
     class Meta:
         model = LetterImage

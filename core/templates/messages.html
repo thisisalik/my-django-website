@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load tz %}
 {% block content %}
 <style>
     .chat-box {
@@ -77,17 +78,39 @@
 </div>
 
 <script>
-  function loadMessages() {
-    fetch("{% url 'fetch_messages' receiver.id %}")
-      .then(response => response.text())
-      .then(html => {
-        document.getElementById("message-container").innerHTML = html;
-        const box = document.getElementById("message-container");
-        box.scrollTop = box.scrollHeight;
+    function localizeTimestamps() {
+      document.querySelectorAll('.timestamp').forEach(function (el) {
+        var iso = el.getAttribute('data-ts');
+        if (!iso) return;
+        var d = new Date(iso);          // parses UTC ISO like "2025-09-09T16:55:00Z"
+        if (isNaN(d)) return;
+        el.textContent = d.toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        });
       });
-  }
-
-  setInterval(loadMessages, 5000);
-  loadMessages();
-</script>
+    }
+  
+    function loadMessages() {
+      fetch("{% url 'fetch_messages' receiver.id %}")
+        .then(response => response.text())
+        .then(html => {
+          document.getElementById("message-container").innerHTML = html;
+          localizeTimestamps(); // ← convert after replacing HTML
+          const box = document.getElementById("message-container");
+          box.scrollTop = box.scrollHeight;
+        });
+    }
+  
+    // initial load + polling
+    document.addEventListener('DOMContentLoaded', function () {
+      localizeTimestamps(); // in case the page had initial messages
+      loadMessages();
+      setInterval(loadMessages, 5000);
+    });
+  </script>
+  
 {% endblock %}

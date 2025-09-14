@@ -127,6 +127,17 @@
     setInterval(updateNotifications, 5000);
     updateNotifications();
   </script>
+<script>
+  (function () {
+    try {
+      var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz) {
+        // 1 year, path=/ so it applies everywhere
+        document.cookie = "timezone=" + encodeURIComponent(tz) + "; Max-Age=31536000; Path=/";
+      }
+    } catch (e) {}
+  })();
+</script>
 
 </body>
 </html>

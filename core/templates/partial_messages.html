@@ -1,8 +1,9 @@
+{% load tz %}
 {% for message in messages %}
   <div class="message-row {% if message.sender == request.user.profile %}from-me{% else %}from-them{% endif %}">
     <div class="message-bubble">
       {{ message.text }}
-      <div class="timestamp">{{ message.timestamp|date:"M j, Y, g:i a" }}</div>
+      <div class="timestamp" data-ts="{{ message.timestamp|date:'c' }}"></div>
     </div>
   </div>
 {% empty %}

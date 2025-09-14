@@ -67,7 +67,17 @@
       <div style="color: red; margin-top: 5px;">{{ error }}</div>
     {% endfor %}
   </p>
-  
+  <input type="hidden" name="temp_profile_picture" value="{{ temp_profile_picture|default:'' }}">
+  {% if temp_profile_picture %}
+  <div style="margin-top:6px">
+    <img src="/media/{{ temp_profile_picture }}" alt="Selected profile picture"
+         style="max-width:140px;border-radius:10px;border:1px solid #ddd;">
+    <div style="font-size:12px;color:#555;margin-top:4px;">
+      We’ll use this picture unless you choose another.
+    </div>
+  </div>
+{% endif %}
+
   <p><label for="id_preferred_gender">Preferred Gender:</label> {{ form.preferred_gender }}</p>
 
   <p><label for="id_preferred_age_min">Preferred Minimum Age:</label>
