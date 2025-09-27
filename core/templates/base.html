@@ -6,24 +6,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/base_style.css' %}">
+
+  <style>
+    /* --- Nav --- */
+    .nav {
+      display:flex; align-items:center; gap:12px;
+      padding:10px 14px; background:#fff; border-bottom:1px solid #eee;
+    }
+    .nav-group { display:flex; align-items:center; gap:10px; }
+    .nav-item {
+      position:relative; display:flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:10px; text-decoration:none;
+      color:#374151; font-weight:500;
+    }
+    .nav-item:hover { background:#f6f7f8; }
+    .nav-item.active { background:#eef6ff; color:#1d4ed8; }
+    .nav-item .icon { font-size:22px; line-height:1; }
+    .nav-item .label { font-size:14px; }
+    .badge {
+      position:absolute; top:-4px; right:-4px;
+      background:#ef4444; color:#fff; border-radius:999px;
+      font-size:11px; padding:2px 6px; line-height:1;
+      display:none;
+    }
+    .nav-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+
+    .avatar {
+      width:28px; height:28px; border-radius:50%; object-fit:cover;
+      border:1px solid #e5e7eb;
+    }
+
+    @media (max-width:560px){
+      .nav { justify-content:space-between; }
+      .nav-group { gap:6px; }
+      .nav-item { padding:10px; }
+      .nav-item .label { display:none; }
+    }
+
+    .container { max-width:980px; margin:16px auto; padding:0 16px; }
+  </style>
 </head>
+
+<!-- Welcome modal -->
 <div id="welcome-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index:9999;">
   <div style="max-width: 450px; margin: 80px auto; background:white; padding: 25px; border-radius: 12px; text-align: left; font-size: 16px; line-height: 1.5;">
     <h3 style="margin-top: 0;">👋 Welcome to Letter Connections!</h3>
-    
-    <p><strong>💌 Browse Letters</strong><br>
+
+    <p><strong>💌 Letters</strong><br>
     Here you’ll see personal letters written by others. No faces, no bios — just words and feelings.</p>
-    
+
     <p><strong>🐢 Likes</strong><br>
-    These are people who liked your letter — they found something in your words that stood out.</p>
-    
+    People who liked your letter.</p>
+
     <p><strong>💬 Matches & Chats</strong><br>
-    If you both like each other’s letter, you match. Then you can chat and finally see each other’s profiles.</p>
+    If you both like each other’s letter, you match — then you can chat and see profiles.</p>
 
     <hr style="margin: 15px 0;">
-
     <p style="font-size: 14px; color: #444;">
-      You can’t see anyone’s profile info until you match — and they can’t see yours either. It’s all about emotional connection first. ✨
+      You can’t see anyone’s profile info until you match — and they can’t see yours either. Emotional connection first. ✨
     </p>
 
     <div style="text-align: right; margin-top: 20px;">
@@ -31,113 +71,107 @@
     </div>
   </div>
 </div>
+
 <script>
   function dismissWelcome() {
     localStorage.setItem('letterdating_welcome_seen', 'true');
     document.getElementById('welcome-modal').style.display = 'none';
   }
-
   document.addEventListener('DOMContentLoaded', function() {
     const hasSeen = localStorage.getItem('letterdating_welcome_seen');
-    if (!hasSeen) {
-      document.getElementById('welcome-modal').style.display = 'block';
-    }
+    if (!hasSeen) document.getElementById('welcome-modal').style.display = 'block';
   });
 </script>
 
 <body>
-  <nav style="padding: 10px; background: #eee; display: flex; gap: 20px; align-items: center;">
-    <a href="/letters/" title="Browse Letters" style="text-decoration: none; font-size: 24px;">💌</a>
+  <nav class="nav">
+    <div class="nav-group">
+      <!-- Browse Letters -->
+      <a href="/letters/"
+         class="nav-item {% if request.path|slice:':8' == '/letters' %}active{% endif %}"
+         title="Browse Letters" aria-label="Browse Letters">
+        <span class="icon" aria-hidden="true">💌</span>
+        <span class="label">Letters</span>
+      </a>
 
-    <a href="/likes/" title="Likes You" id="likes-icon" style="position: relative; text-decoration: none; font-size: 24px;">
-      🐢
-      <span id="likes-count" style="display: none;
-        position: absolute;
-        top: -5px;
-        right: -10px;
-        background: red;
-        color: white;
-        font-size: 12px;
-        padding: 2px 6px;
-        border-radius: 50%;"></span>
-    </a>
+      <!-- Likes (🐢) -->
+      <a href="/likes/"
+         class="nav-item {% if request.path|slice:':6' == '/likes' %}active{% endif %}"
+         id="likes-icon"
+         title="Likes" aria-label="Likes">
+        <span class="icon" aria-hidden="true">🐢</span>
+        <span class="label">Likes</span>
+        <span id="likes-count" class="badge"></span>
+      </a>
 
-    <a href="/chats/" title="Messages" id="messages-icon" style="position: relative; text-decoration: none; font-size: 24px;">
-      💬
-      <span id="messages-count" style="display: none;
-        position: absolute;
-        top: -5px;
-        right: -10px;
-        background: red;
-        color: white;
-        font-size: 12px;
-        padding: 2px 6px;
-        border-radius: 50%;"></span>
-    </a>
+      <!-- Chats -->
+      <a href="/chats/"
+         class="nav-item {% if request.path|slice:':6' == '/chats' %}active{% endif %}"
+         id="messages-icon"
+         title="Chats" aria-label="Chats">
+        <span class="icon" aria-hidden="true">💬</span>
+        <span class="label">Chats</span>
+        <span id="messages-count" class="badge"></span>
+      </a>
 
-    <a href="/profile/" title="Your Profile" style="text-decoration: none; font-size: 24px;">
-      {% if request.user.is_authenticated and request.user.profile.profile_picture %}
-        <img src="{{ request.user.profile.profile_picture.url }}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
-      {% else %}
-        🧑
-      {% endif %}
-    </a>
+      <!-- Profile -->
+      <a href="/profile/"
+         class="nav-item {% if request.path == '/profile/' %}active{% endif %}"
+         title="My Profile" aria-label="My Profile">
+        {% if request.user.is_authenticated and request.user.profile.profile_picture %}
+          <img src="{{ request.user.profile.profile_picture.url }}" alt="Profile" class="avatar">
+        {% else %}
+          <span class="icon" aria-hidden="true">👤</span>
+        {% endif %}
+        <span class="label">Profile</span>
+      </a>
+    </div>
 
-    <form action="/accounts/logout/" method="post" style="margin-left: auto;">
-      {% csrf_token %}
-      <button title="Logout" type="submit" style="background: none; border: none; font-size: 24px; cursor: pointer;">
-        🚪
-      </button>
-    </form>
+    <div class="nav-right">
+      <form action="/accounts/logout/" method="post" style="margin:0;">
+        {% csrf_token %}
+        <button title="Logout" type="submit" class="nav-item" style="background:transparent;">
+          <span class="icon" aria-hidden="true">🚪</span>
+          <span class="label">Logout</span>
+        </button>
+      </form>
+    </div>
   </nav>
 
-  <!-- ✅ Clean mobile container without fixed inline max-width -->
   <div class="container">
-    {% block content %}
-    {% endblock %}
+    {% block content %}{% endblock %}
   </div>
 
   <script>
     function updateNotifications() {
       fetch('/notifications/live/')
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-          const likesCount = data.new_likes_count;
-          const messagesCount = data.unread_messages_count + data.unseen_matches_count;
+          const likes = data.new_likes_count || 0;
+          const msgs = (data.unread_messages_count || 0) + (data.unseen_matches_count || 0);
 
           const likesSpan = document.getElementById('likes-count');
           const messagesSpan = document.getElementById('messages-count');
 
-          if (likesCount > 0) {
-            likesSpan.textContent = likesCount;
-            likesSpan.style.display = 'inline';
-          } else {
-            likesSpan.style.display = 'none';
-          }
+          if (likes > 0) { likesSpan.textContent = likes; likesSpan.style.display = 'inline'; }
+          else { likesSpan.style.display = 'none'; }
 
-          if (messagesCount > 0) {
-            messagesSpan.textContent = messagesCount;
-            messagesSpan.style.display = 'inline';
-          } else {
-            messagesSpan.style.display = 'none';
-          }
-        });
+          if (msgs > 0) { messagesSpan.textContent = msgs; messagesSpan.style.display = 'inline'; }
+          else { messagesSpan.style.display = 'none'; }
+        })
+        .catch(() => {});
     }
-
     setInterval(updateNotifications, 5000);
     updateNotifications();
   </script>
-<script>
-  (function () {
-    try {
-      var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (tz) {
-        // 1 year, path=/ so it applies everywhere
-        document.cookie = "timezone=" + encodeURIComponent(tz) + "; Max-Age=31536000; Path=/";
-      }
-    } catch (e) {}
-  })();
-</script>
 
+  <script>
+    (function () {
+      try {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) document.cookie = "timezone=" + encodeURIComponent(tz) + "; Max-Age=31536000; Path=/";
+      } catch (e) {}
+    })();
+  </script>
 </body>
 </html>

@@ -24,6 +24,9 @@ from .models import Notification
 from django.http import JsonResponse
 from django.shortcuts import redirect
 
+LETTER_MIN_CHARS = 200
+LETTER_MAX_CHARS = 2000
+
 @login_required
 def home_redirect(request):
     return redirect('browse_letter') 
@@ -444,17 +447,20 @@ def _save_temp_profile_picture(uploaded_file):
     return rel_path  # e.g. 'tmp_reg/abc123.jpg'
 
 from django.contrib.auth import login
-import uuid  # already in your code
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files import File
+import mimetypes, os
+# keep your existing imports (uuid, settings, etc.)
+
+LETTER_MIN_CHARS = 200
+LETTER_MAX_CHARS = 2000
 
 def register(request):
     ages = range(18, 101)
 
     if request.method == 'POST':
-        # 1) read any previously stashed temp path BEFORE building the form
         temp_profile_picture = (request.POST.get('temp_profile_picture') or '').strip() or None
 
-        # 2) if user did NOT upload a new file this time, but we have a stashed temp,
-        #    re-inject it into request.FILES so the required=True validation still passes
         if temp_profile_picture and 'profile_picture' not in request.FILES:
             abs_temp = os.path.join(settings.MEDIA_ROOT, temp_profile_picture)
             if os.path.exists(abs_temp):
@@ -469,29 +475,61 @@ def register(request):
                     content_type=ctype
                 )
 
-        # 3) now build the form as usual; it will see a file present either way
         form = FullRegisterForm(request.POST, request.FILES)
 
         if not form.is_valid():
-            # If user uploaded a new file on this invalid attempt, stash it.
             uploaded = request.FILES.get('profile_picture')
             if uploaded:
                 try:
                     temp_profile_picture = _save_temp_profile_picture(uploaded)
                 except Exception:
-                    temp_profile_picture = None  # fall back; user can re-upload
-     # NEW: if we have a stashed image, remove HTML 'required' so browser won't block next submit
+                    temp_profile_picture = None
             if temp_profile_picture:
                 form.fields['profile_picture'].required = False
                 form.fields['profile_picture'].widget.attrs.pop('required', None)
-            print("REGISTER FORM ERRORS:", form.errors.as_json())
             messages.error(request, form.errors)
-            return render(
-                request, 'register.html',
-                {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture}
-            )
+            return render(request, 'register.html',
+                          {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
 
-        # --- form is valid from here ---
+        # --- letter validation BEFORE saving user ---
+        skip_letter = request.POST.get('skip_letter') in ('1', 'on', 'true', 'True')
+        letter_type = form.cleaned_data.get('letter_type')
+        text_content = (form.cleaned_data.get('text_content') or '').strip()
+        pdf = request.FILES.get('pdf')
+        images = request.FILES.getlist('images')
+
+        if not skip_letter and letter_type:
+            if letter_type == 'text':
+                if not text_content:
+                    messages.error(request, "❌ Please write your letter text.")
+                    return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
+                if len(text_content) < LETTER_MIN_CHARS:
+                    messages.error(request, f"❌ Letter text must be at least {LETTER_MIN_CHARS} characters.")
+                    return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
+                if len(text_content) > LETTER_MAX_CHARS:
+                    messages.error(request, f"❌ Letter text must be {LETTER_MAX_CHARS} characters or fewer.")
+                    return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
+
+            elif letter_type == 'pdf':
+                if not pdf:
+                    messages.error(request, "❌ Please choose a PDF file.")
+                    return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
+                ct = (pdf.content_type or '').lower()
+                if not (ct == 'application/pdf' or pdf.name.lower().endswith('.pdf')):
+                    messages.error(request, "❌ Selected file is not a PDF. Please choose a .pdf file.")
+                    return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
+
+            elif letter_type == 'image':
+                if not images:
+                    messages.error(request, "❌ Please choose at least one image.")
+                    return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
+                for f in images:
+                    ct = (f.content_type or '').lower()
+                    if not (ct.startswith('image/') or f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))):
+                        messages.error(request, "❌ Only image files are allowed for an Image letter.")
+                        return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
+
+        # --- now safe to create user ---
         user = form.save(commit=False)
         user.username = form.cleaned_data['email']
         user.email = form.cleaned_data['email']
@@ -502,8 +540,6 @@ def register(request):
         profile.age = form.cleaned_data['age']
         profile.gender = form.cleaned_data['gender']
 
-        # If user uploaded in this successful POST, use it.
-        # Otherwise, if we have a stashed temp file, attach it.
         profile_picture = form.cleaned_data.get('profile_picture')
         if profile_picture:
             profile.profile_picture = profile_picture
@@ -512,7 +548,6 @@ def register(request):
             if os.path.exists(abs_temp):
                 with open(abs_temp, 'rb') as f:
                     profile.profile_picture.save(os.path.basename(abs_temp), File(f), save=False)
-                # cleanup the temp file
                 try:
                     os.remove(abs_temp)
                 except Exception:
@@ -526,48 +561,18 @@ def register(request):
         profile.connection_types = request.POST.getlist('connection_types')
         profile.save()
 
-        # (keep your existing letter logic exactly as-is)
-        skip_letter = request.POST.get('skip_letter') in ('1', 'on', 'true', 'True')
-        if not skip_letter:
-            letter_type = form.cleaned_data.get('letter_type')
-            text_content = (form.cleaned_data.get('text_content') or '').strip()
-            pdf = request.FILES.get('pdf')
-            images = request.FILES.getlist('images')
-            if letter_type:
-                if letter_type == 'text':
-                    if not text_content:
-                        messages.error(request, "❌ Please write your letter text.")
-                        return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
-                elif letter_type == 'pdf':
-                    if not pdf:
-                        messages.error(request, "❌ Please choose a PDF file.")
-                        return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
-                    ct = (pdf.content_type or '').lower()
-                    if not (ct == 'application/pdf' or pdf.name.lower().endswith('.pdf')):
-                        messages.error(request, "❌ Selected file is not a PDF. Please choose a .pdf file.")
-                        return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
-                elif letter_type == 'image':
-                    if not images:
-                        messages.error(request, "❌ Please choose at least one image.")
-                        return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
-                    for f in images:
-                        ct = (f.content_type or '').lower()
-                        if not (ct.startswith('image/') or f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))):
-                            messages.error(request, "❌ Only image files are allowed for an Image letter.")
-                            return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
-
-                if letter_type and (text_content or pdf or images):
-                    letter = Letter.objects.create(
-                        profile=profile,
-                        letter_type=letter_type,
-                        text_content=text_content if letter_type == 'text' else '',
-                        pdf=pdf if letter_type == 'pdf' else None
-                    )
-                    if letter_type == 'image':
-                        for img in images:
-                            ct = (img.content_type or '').lower()
-                            if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
-                                LetterImage.objects.create(letter=letter, image=img)
+        # --- save letter now ---
+        if not skip_letter and letter_type:
+            if letter_type == 'text':
+                Letter.objects.create(profile=profile, letter_type='text', text_content=text_content)
+            elif letter_type == 'pdf':
+                Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+            elif letter_type == 'image':
+                letter = Letter.objects.create(profile=profile, letter_type='image')
+                for img in images:
+                    ct = (img.content_type or '').lower()
+                    if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+                        LetterImage.objects.create(letter=letter, image=img)
 
         login(request, user)
         return redirect('browse_letter')

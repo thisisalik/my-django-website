@@ -9,7 +9,7 @@
 </style>
 
 <h2>Create Account</h2>
-{% if messages %}
+{% if request.method == "POST" and messages %}
   <div style="margin: 10px 0;">
     {% for message in messages %}
       <div style="padding:10px;border-radius:8px; margin-bottom:8px;
@@ -21,6 +21,7 @@
     {% endfor %}
   </div>
 {% endif %}
+
 <div style="margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 10px;">
     <strong>Connect through emotion — not just photos.</strong><br><br>
     On this platform, you share a <strong>letter about yourself</strong>:<br>
@@ -112,7 +113,7 @@
       <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
     {% endfor %}
   </div>
-  
+  <p style="margin-top: 20px;"><strong>Connection type:</strong></p>
     {% for checkbox in form.connection_types %}
       <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
     {% endfor %}
@@ -120,18 +121,17 @@
 {% if form.connection_types.errors %}
 <div style="color: red; margin-bottom: 5px;">{{ form.connection_types.errors.0 }}</div>
 {% endif %}
-  <p style="margin-top: 20px;"><strong>How to share your letter:</strong></p>
-  <ul style="margin-bottom: 15px;">
-    <li>✍️ You can <strong>write it directly</strong> on the site.</li>
-    <li>📷 Or take a photo of a <strong>handwritten letter</strong> and upload it.</li>
-    <li>📄 You can also upload your letter as a <strong>PDF file</strong>.</li>
-  </ul>
+<p><strong>Add Your Letter:</strong></p>
+
+    </ul>
   <p style="font-size: 14px; color: #555;">
     Your letter is the only thing others will see at first — so take your time and share something that feels real. ✨
+    <li><strong>Text</strong> — write directly in the box below.</li>
+    <li><strong>Image </strong> — upload a clear photo of your handwritten letter.</li>
+    <li><strong>PDF</strong> — upload a typed letter you saved as a file.</li>
   </p>
   
   <!-- ✅ Add Your Letter section with toggle -->
-  <p><strong>Add Your Letter:</strong></p>
   <p>
     <input type="checkbox" id="skip_upload_checkbox" name="skip_letter" value="1">
 <label for="skip_upload_checkbox">I’ll upload my letter later</label>
@@ -144,6 +144,11 @@
     <div id="text_content_div" style="display:none;">
       <label for="id_text_content">Text Content:</label><br>
       {{ form.text_content }}
+      <small id="letter_help" style="display:block;margin-top:6px;color:#555;">
+        Minimum <strong>200</strong> characters, maximum <strong>2000</strong>. 
+        <span id="char_count">0</span>/<span id="char_max">2000</span>
+      </small>
+      
     </div>
 
     <div id="image_upload_div" style="display:none;">
@@ -366,7 +371,93 @@
       });
     })();
     </script>
-    
+<script>
+  (function () {
+    const MIN_CHARS = 200;
+    const MAX_CHARS = 2000;
+  
+    const textarea = document.getElementById('id_text_content');
+    const letterTypeSelect = document.getElementById('id_letter_type');
+    const skipCheckbox = document.getElementById('skip_upload_checkbox');
+    const counter = document.getElementById('char_count');
+    const maxOut = document.getElementById('char_max');
+    const help = document.getElementById('letter_help');
+  
+    // setup once
+    if (maxOut) maxOut.textContent = String(MAX_CHARS);
+    if (textarea) {
+      textarea.setAttribute('maxlength', String(MAX_CHARS));
+      if (!textarea.getAttribute('rows')) {
+        textarea.setAttribute('rows', '6');
+      }
+    }
+  
+    function visibleAndTextMode() {
+      return letterTypeSelect && letterTypeSelect.value === 'text' && !(skipCheckbox && skipCheckbox.checked);
+    }
+  
+    function updateCounter() {
+      if (!textarea || !counter) return;
+      const len = (textarea.value || '').trim().length;
+      counter.textContent = String(len);
+  
+      if (help) {
+        help.style.color = (visibleAndTextMode() && len > 0 && len < MIN_CHARS) ? '#b00020' : '#555';
+      }
+    }
+  
+    // --- unified validator, replaces all older ones ---
+    window.letterValid = function () {
+      const tSel = document.getElementById('id_letter_type');
+      const tInput = document.getElementById('id_text_content');
+      const imagesInput = document.querySelector("input[name='images']");
+      const pdfInput = document.getElementById('id_pdf');
+      const skip = document.getElementById('skip_upload_checkbox');
+  
+      if (skip && skip.checked) return true;
+      if (!tSel || !tSel.value) return false;
+  
+      const t = tSel.value;
+      if (t === 'text') {
+        return !!(tInput && (tInput.value || '').trim().length >= MIN_CHARS);
+      } else if (t === 'image') {
+        return !!(imagesInput && imagesInput.files && imagesInput.files.length > 0);
+      } else if (t === 'pdf') {
+        return !!(pdfInput && pdfInput.files && pdfInput.files.length > 0);
+      }
+      return false;
+    };
+  
+    // --- counter events ---
+    if (textarea) {
+      textarea.addEventListener('input', updateCounter);
+    }
+    if (letterTypeSelect) letterTypeSelect.addEventListener('change', updateCounter);
+    if (skipCheckbox) skipCheckbox.addEventListener('change', updateCounter);
+    updateCounter();
+  
+    // --- submit-time guard ---
+    const form = document.querySelector('form');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        const tSel = document.getElementById('id_letter_type');
+        const tInput = document.getElementById('id_text_content');
+        const skip = document.getElementById('skip_upload_checkbox');
+  
+        if (!skip.checked && tSel && tSel.value === 'text') {
+          const len = (tInput && tInput.value || '').trim().length;
+          if (len < MIN_CHARS) {
+            e.preventDefault();
+            alert(`❌ Letter text must be at least ${MIN_CHARS} characters (you have ${len}).`);
+            tInput && tInput.focus();
+            return false;
+          }
+        }
+      });
+    }
+  })();
+  </script>
+  
     
       
 {% endblock %}

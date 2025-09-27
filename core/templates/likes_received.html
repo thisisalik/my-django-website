@@ -12,7 +12,15 @@
 
         {# ---------- TEXT ---------- #}
         {% if letter.letter_type == "text" %}
-          <p>{{ letter.text_content|linebreaksbr }}</p>
+    {% if letter.text_content %}
+        <div class="letter-card">
+          <div class="letter-body">
+            📝 {{ letter.text_content|linebreaksbr }}
+          </div>
+        </div>
+    {% else %}
+        <div class="letter-card"><em>No text available.</em></div>
+    {% endif %}
 
         {# ---------- IMAGE (exactly like Browse) ---------- #}
         {% elif letter.letter_type == "image" %}

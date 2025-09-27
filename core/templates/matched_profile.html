@@ -2,27 +2,113 @@
 {% load static %}
 {% block content %}
 
-<div style="display: flex; align-items: center; gap: 15px;">
-  {% if profile.profile_picture %}
-  <img src="{{ profile.profile_picture.url }}" alt="Profile Picture"
-  id="profilePic" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; cursor: pointer;">
+<style>
+  .match-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 15px;
+  }
+  .match-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
 
-  <!-- Modal (hidden by default) -->
-  <div id="picModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
-    <img id="modalImg" src="{{ profile.profile_picture.url }}" style="max-width: 90%; max-height: 90%; border-radius: 12px;">
+  /* Buttons */
+  .btn {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-chat {
+    background: #4CAF50;
+    color: white;
+    margin-top: 15px;
+    transition: background 0.2s;
+  }
+  .btn-chat:hover { background: #43a047; }
+
+  /* Small, subtle Unmatch button */
+  .btn-unmatch {
+    background: transparent;
+    border: 1px solid #f5c6cb;
+    color: #b91c1c;
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .btn-unmatch:hover {
+    background: #fff5f5;
+  }
+
+  .letter-card {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    background: #fff;
+  }
+  .letter-body {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #222;
+    max-height: 40vh;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+</style>
+
+<div class="match-header">
+  <div class="match-header-left">
+    {% if profile.profile_picture %}
+      <img src="{{ profile.profile_picture.url }}" alt="Profile Picture"
+           id="profilePic"
+           style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; cursor: pointer;">
+
+      <!-- Modal (hidden by default) -->
+      <div id="picModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+        <img id="modalImg" src="{{ profile.profile_picture.url }}" style="max-width: 90%; max-height: 90%; border-radius: 12px;">
+      </div>
+    {% endif %}
+    <h2 style="margin:0;">{{ profile.name }}'s Profile</h2>
   </div>
+
+  {% if match %}
+    <form method="post" action="{% url 'unmatch' match.id %}" style="margin:0;">
+      {% csrf_token %}
+      <button type="submit"
+              class="btn-unmatch"
+              onclick="return confirm('Unmatch this person? You won’t see each other’s letters or chat anymore.');">
+        ❌ Unmatch
+      </button>
+    </form>
   {% endif %}
-  <h2>{{ profile.name }}'s Profile</h2>
 </div>
 
 <p>Age: {{ profile.age }}</p>
 <p>Gender: {{ profile.gender }}</p>
 <p>City: {{ profile.location }}</p> 
 <p>Letter:</p>
-
-{% if letter.letter_type == 'text' %}
-  <p>{{ letter.text_content }}</p>
+{% if letter.letter_type == "text" %}
+    {% if letter.text_content %}
+        <div class="letter-card">
+          <div class="letter-body">
+            📝 {{ letter.text_content|linebreaksbr }}
+          </div>
+        </div>
+    {% else %}
+        <div class="letter-card"><em>No text available.</em></div>
+    {% endif %}
 
 {% else %}
 {% if letter.letter_type == "pdf" and letter.pdf %}
@@ -143,66 +229,74 @@
 {% else %}
   {% if letter.letter_type == 'image' and letter.images.exists %}
     <div style="position: relative; max-width: 400px; margin-top: 10px;">
-      {% with images=letter.images.all %}
-        {% for image in images %}
-          <div style="display: {% if forloop.first %}block{% else %}none{% endif %};" class="slide" id="slide-{{ forloop.counter }}">
-            <img src="{{ image.image.url }}" alt="Letter Image"
-                 style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain;">
-          </div>
-        {% endfor %}
-        {% if images|length > 1 %}
-          <button onclick="prevSlide()" id="prevBtn" style="position: absolute; left: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">←</button>
-          <button onclick="nextSlide()" id="nextBtn" style="position: absolute; right: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">→</button>
-        {% endif %}
+      {% with group_id="match" %}
+        {% with images=letter.images.all %}
+          {% for image in images %}
+            <div style="display: {% if forloop.first %}block{% else %}none{% endif %};"
+                 class="slide-group-{{ group_id }}" id="slide-{{ group_id }}-{{ forloop.counter }}">
+              <img src="{{ image.image.url }}" alt="Letter Image"
+                   class="clickable-image"
+                   data-gallery="{{ group_id }}"
+                   style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain; cursor: pointer;">
+            </div>
+          {% endfor %}
+          {% if images|length > 1 %}
+            <button onclick="prevSlide('{{ group_id }}', {{ images|length }})" id="prevBtn-{{ group_id }}"
+                    style="position: absolute; left: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">&larr;</button>
+            <button onclick="nextSlide('{{ group_id }}', {{ images|length }})" id="nextBtn-{{ group_id }}"
+                    style="position: absolute; right: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">&rarr;</button>
+          {% endif %}
+        {% endwith %}
       {% endwith %}
     </div>
 
     <script>
-      let currentSlide = 1;
-      const totalSlides = {{ letter.images.all|length }};
+      // Same carousel behavior as browse_letters, with a fixed group_id "match"
+      const currentSlides = window.currentSlides || {};
 
-      function showSlide(n) {
-        for (let i = 1; i <= totalSlides; i++) {
-          const slide = document.getElementById('slide-' + i);
-          if (slide) slide.style.display = i === n ? 'block' : 'none';
+      function showSlide(groupId, index, total) {
+        for (let i = 1; i <= total; i++) {
+          const slide = document.getElementById(`slide-${groupId}-${i}`);
+          if (slide) slide.style.display = (i === index) ? 'block' : 'none';
         }
-        document.getElementById('prevBtn').style.display = n === 1 ? 'none' : 'block';
-        document.getElementById('nextBtn').style.display = n === totalSlides ? 'none' : 'block';
+        const prevBtn = document.getElementById(`prevBtn-${groupId}`);
+        const nextBtn = document.getElementById(`nextBtn-${groupId}`);
+        if (prevBtn) prevBtn.style.display = index === 1 ? 'none' : 'block';
+        if (nextBtn) nextBtn.style.display = index === total ? 'none' : 'block';
+        currentSlides[groupId] = index;
+        window.currentSlides = currentSlides;
       }
 
-      function nextSlide() {
-        if (currentSlide < totalSlides) {
-          currentSlide++;
-          showSlide(currentSlide);
+      function nextSlide(groupId, total) {
+        if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+        if (currentSlides[groupId] < total) {
+          currentSlides[groupId]++;
+          showSlide(groupId, currentSlides[groupId], total);
         }
       }
 
-      function prevSlide() {
-        if (currentSlide > 1) {
-          currentSlide--;
-          showSlide(currentSlide);
+      function prevSlide(groupId, total) {
+        if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+        if (currentSlides[groupId] > 1) {
+          currentSlides[groupId]--;
+          showSlide(groupId, currentSlides[groupId], total);
         }
       }
 
       document.addEventListener("DOMContentLoaded", function() {
-        showSlide(currentSlide);
+        const groupId = "match";
+        const total = document.querySelectorAll(`.slide-group-${groupId}`).length;
+        if (total > 0) {
+          showSlide(groupId, 1, total);
+        }
       });
     </script>
   {% endif %}
 {% endif %}
 {% endif %}
 
-<a href="{% url 'message_view' profile.id %}">Start Chat</a>
-{% if match %}
-<form method="post" action="{% url 'unmatch' match.id %}" style="margin-top:10px;">
-  {% csrf_token %}
-  <button type="submit"
-          onclick="return confirm('Unmatch this person? You won’t see each other’s letters or chat anymore.');"
-          style="background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; padding:5px 10px; border-radius:6px; cursor:pointer;">
-    ❌ Unmatch
-  </button>
-</form>
-{% endif %}
+<!-- Start Chat button -->
+<a href="{% url 'message_view' profile.id %}" class="btn btn-chat">💬 Start Chat</a>
 
 <!-- Zoom profile picture JS -->
 <script src="{% static 'js/modal_image_viewer.js' %}"></script>

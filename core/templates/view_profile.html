@@ -39,11 +39,16 @@
     {% for letter in letters %}
         <div style="border:1px solid #ccc; padding:15px; margin-bottom:20px; border-radius:10px;">
             {% if letter.letter_type == "text" %}
-                {% if letter.text_content %}
-                    <p>📝 {{ letter.text_content|linebreaksbr }}</p>
-                {% else %}
-                    <p><em>No text available.</em></p>
-                {% endif %}
+    {% if letter.text_content %}
+        <div class="letter-card">
+          <div class="letter-body">
+            📝 {{ letter.text_content|linebreaksbr }}
+          </div>
+        </div>
+    {% else %}
+        <div class="letter-card"><em>No text available.</em></div>
+    {% endif %}
+
 
                 {% elif letter.letter_type == "pdf" and letter.pdf %}
 {% with gid="p"|add:letter.id|stringformat:"s" %}
@@ -214,6 +219,14 @@
   </a>
 <br><br>
 <a href="{% url 'edit_profile' %}" class="btn btn-secondary">✏️ Edit Profile</a>
+<hr style="margin: 25px 0;">
+
+<div style="background:#f9f9f9; padding:15px; border-radius:10px; font-size:14px;">
+  <p>If you run into problems or want to share feedback, reach out:</p>
+  <ul style="margin:0; padding-left:18px; line-height:1.6;">
+    Email: <a href="turtledatingapp@gmail.com">hello@yourdomain.com</a>
+  </ul>
+</div>
 
 
 <script>

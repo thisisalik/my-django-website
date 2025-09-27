@@ -7,7 +7,16 @@
 {% if letter %}
   <div class="letter-card">
     {% if letter.letter_type == "text" %}
-      <p>{{ letter.text_content|linebreaksbr }}</p>
+    {% if letter.text_content %}
+        <div class="letter-card">
+          <div class="letter-body">
+            📝 {{ letter.text_content|linebreaksbr }}
+          </div>
+        </div>
+    {% else %}
+        <div class="letter-card"><em>No text available.</em></div>
+    {% endif %}
+
     {% elif letter.letter_type == "image" %}
     <div style="display: flex; flex-wrap: wrap; gap: 10px;">
         <div style="position: relative; max-width: 400px; margin-top: 10px;">

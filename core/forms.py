@@ -8,6 +8,8 @@ import os
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.forms.widgets import ClearableFileInput
+LETTER_MIN_CHARS = 200
+LETTER_MAX_CHARS = 2000
 
 CITIES_FILE_PATH = os.path.join(settings.BASE_DIR, 'core', 'static', 'js', 'cities.json')
 with open(CITIES_FILE_PATH, encoding='utf-8') as f:
@@ -27,15 +29,19 @@ class LetterForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         letter_type = cleaned_data.get('letter_type') or getattr(self.instance, 'letter_type', None)
-        text_content = cleaned_data.get('text_content', '').strip()
+        text_content = (cleaned_data.get('text_content') or '').strip()
         pdf = cleaned_data.get('pdf')
 
         # --- Text validation ---
+        LETTER_MIN_CHARS = 200
+        LETTER_MAX_CHARS = 2000
         if letter_type == 'text':
             if not text_content:
                 raise forms.ValidationError('❌ You selected Text, but did not write anything.')
-            if len(text_content) < 4:
-                raise forms.ValidationError('❌ Letter text must be at least 4 characters long.')
+            if len(text_content) < LETTER_MIN_CHARS:
+                raise forms.ValidationError(f'❌ Letter text must be at least {LETTER_MIN_CHARS} characters long.')
+            if len(text_content) > LETTER_MAX_CHARS:
+                raise forms.ValidationError(f'❌ Letter text must be {LETTER_MAX_CHARS} characters or fewer.')
 
         # --- PDF validation ---
         if letter_type == 'pdf':
