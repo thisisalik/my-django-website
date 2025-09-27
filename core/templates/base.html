@@ -12,12 +12,16 @@
     .nav {
       display:flex; align-items:center; gap:12px;
       padding:10px 14px; background:#fff; border-bottom:1px solid #eee;
+      overflow-x:auto;                /* NEW: allow horizontal scroll on small screens */
+      -webkit-overflow-scrolling:touch;
+      white-space:nowrap;
     }
     .nav-group { display:flex; align-items:center; gap:10px; }
     .nav-item {
       position:relative; display:flex; align-items:center; gap:8px;
       padding:8px 10px; border-radius:10px; text-decoration:none;
       color:#374151; font-weight:500;
+      flex:0 0 auto;                  /* don’t shrink */
     }
     .nav-item:hover { background:#f6f7f8; }
     .nav-item.active { background:#eef6ff; color:#1d4ed8; }
@@ -37,10 +41,11 @@
     }
 
     @media (max-width:560px){
-      .nav { justify-content:space-between; }
+      .nav { justify-content:flex-start; gap:10px; }   /* keep items on one row and scrollable */
       .nav-group { gap:6px; }
       .nav-item { padding:10px; }
-      .nav-item .label { display:none; }
+      /* REMOVED the rule that hid labels:
+         .nav-item .label { display:none; } */
     }
 
     .container { max-width:980px; margin:16px auto; padding:0 16px; }
