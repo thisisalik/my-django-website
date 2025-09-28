@@ -153,7 +153,7 @@
 
     <div id="image_upload_div" style="display:none;">
       <label for="images">Upload Images:</label><br>
-      <input type="file" name="images" multiple accept="image/*">
+      <input type="file" id="id_letter_images" name="images" multiple accept="image/*">
     </div>
 
     <div id="pdf_upload_div" style="display:none;">
@@ -458,6 +458,81 @@
   })();
   </script>
   
+  <script>
+    /**
+     * Client-side image compressor
+     * - downscales to max 1600px
+     * - saves as JPEG ~82% quality
+     * - if the browser can't compress, it falls back to the original file
+     */
+    async function compressFile(file, maxSide = 1600, quality = 0.82) {
+      if (!file || !file.type?.startsWith('image/')) return file;
+    
+      // Skip tiny JPEGs
+      if (/jpe?g$/i.test(file.name) && file.size < 1.2 * 1024 * 1024) return file;
+    
+      // Decode image
+      const bmp = await (window.createImageBitmap
+        ? createImageBitmap(file)
+        : new Promise((res, rej) => {
+            const img = new Image();
+            img.onload = () => res(img);
+            img.onerror = rej;
+            img.src = URL.createObjectURL(file);
+          })
+      ).catch(() => null);
+      if (!bmp) return file;
+    
+      // Scale
+      const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+      const w = Math.round(bmp.width * scale);
+      const h = Math.round(bmp.height * scale);
+    
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bmp, 0, 0, w, h);
+    
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', quality));
+      if (!blob) return file;
+    
+      const filename = (file.name.replace(/\.\w+$/, '') || 'photo') + '.jpg';
+      return new File([blob], filename, { type: 'image/jpeg' });
+    }
+    
+    function replaceFiles(input, files) {
+      const dt = new DataTransfer();
+      (Array.isArray(files) ? files : [files]).forEach(f => dt.items.add(f));
+      input.files = dt.files;
+    }
+    
+    function wireCompressorFor(input) {
+      if (!input) return;
+      // Make sure file picker shows images
+      if (!input.accept?.includes('image/')) input.accept = 'image/*';
+      input.addEventListener('change', async (e) => {
+        if (!e.target.files?.length) return;
+        if (input.multiple) {
+          const out = [];
+          for (const f of e.target.files) out.push(await compressFile(f));
+          replaceFiles(input, out);
+        } else {
+          const f = await compressFile(e.target.files[0]);
+          replaceFiles(input, f);
+        }
+      });
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      // Profile picture (Django default id for ImageField)
+      const profilePic = document.querySelector('#id_profile_picture, input[name="profile_picture"]');
+      wireCompressorFor(profilePic);
+    
+      // Letter images (we set id above)
+      const letterImgs = document.querySelector('#id_letter_images, input[name="images"]');
+      wireCompressorFor(letterImgs);
+    });
+    </script>
     
       
 {% endblock %}
