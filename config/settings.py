@@ -35,6 +35,8 @@ load_dotenv(BASE_DIR / ".env")  # makes os.getenv read your .env
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
+if os.getenv('CLOUDINARY_URL'):
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 # ✅ Env-driven (safe in prod, works in dev)
 SECRET_KEY = os.getenv(
     "SECRET_KEY",
@@ -78,6 +80,8 @@ if RENDER_EXTERNAL_HOSTNAME:
 # Application definition
 
 INSTALLED_APPS = [
+    'cloudinary',
+    'cloudinary_storage',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -86,6 +90,7 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
     'core.apps.CoreConfig',
+
 ]
 
 MIDDLEWARE = [
