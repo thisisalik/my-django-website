@@ -129,18 +129,18 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'core/static']
 
-# Django 5 storages + back-compat line for libs that still read STATICFILES_STORAGE
+# Use plain StaticFilesStorage to avoid WhiteNoise pre-compress step during collectstatic
 STORAGES = {
     "staticfiles": {
-        # Non-manifest to avoid admin CSS reference failure during collectstatic
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
     "default": {
         # Local/dev default for MEDIA; overridden by Cloudinary below if CLOUDINARY_URL is set
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
 }
-STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+# Back-compat for libs that still read this setting on Django 5
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
