@@ -171,9 +171,16 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / "core/static"]
 
 STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",  # overridden below if CLOUDINARY_URL set
+    },
 }
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -190,6 +197,8 @@ if CLOUDINARY_URL:
     }
     # back-compat for older code paths
     DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+
+    
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # We control it manually
 SESSION_COOKIE_AGE = 1800  # 30 minutes (only affects users who don't set expiry explicitly)
 # Allow embedding on the same origin so PDFs can render inline
