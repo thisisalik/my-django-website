@@ -34,9 +34,6 @@ load_dotenv(BASE_DIR / ".env")  # makes os.getenv read your .env
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
-
-if os.getenv('CLOUDINARY_URL'):
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 # ✅ Env-driven (safe in prod, works in dev)
 SECRET_KEY = os.getenv(
     "SECRET_KEY",
@@ -95,6 +92,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -102,7 +100,6 @@ MIDDLEWARE = [
     'core.middleware.BrowserTimezoneMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -186,6 +183,13 @@ LOGIN_REDIRECT_URL = '/letters/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
+if CLOUDINARY_URL:
+    STORAGES["default"] = {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    }
+    # back-compat for older code paths
+    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # We control it manually
 SESSION_COOKIE_AGE = 1800  # 30 minutes (only affects users who don't set expiry explicitly)
 # Allow embedding on the same origin so PDFs can render inline
