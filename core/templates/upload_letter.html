@@ -4,66 +4,119 @@
 <h2>Upload Your Letter 💌</h2>
 
 <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
+  {% csrf_token %}
 
-    {# 🔴 show form-wide errors (like "Please upload at least one image") #}
-    {% if form.non_field_errors %}
-      <div style="color:#c00; margin-bottom:10px;">
-        {{ form.non_field_errors }}
-      </div>
-    {% endif %}
+  {# form-wide errors (e.g., “Please upload at least one image”) #}
+  {% if form.non_field_errors %}
+    <div style="color:#b00020;margin:10px 0;">
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
 
+  <p>
     <label for="id_letter_type">Letter Type:</label><br>
     {{ form.letter_type }}
     {% if form.letter_type.errors %}
-      <div style="color:#c00">{{ form.letter_type.errors|join:", " }}</div>
+      <div style="color:#b00020;margin-top:6px;">{{ form.letter_type.errors|join:", " }}</div>
     {% endif %}
-    <br><br>
+  </p>
 
-    <div id="text_content_div" style="display:none;">
-        <label for="id_text_content">Text Content:</label><br>
-        {{ form.text_content }}
-        {% if form.text_content.errors %}
-          <div style="color:#c00">{{ form.text_content.errors|join:", " }}</div>
-        {% endif %}
-    </div>
+  <div id="text_content_div" style="display:none;">
+    <label for="id_text_content">Text Content:</label><br>
+    {{ form.text_content }}
+    <small id="letter_help" style="display:block;margin-top:6px;color:#555;">
+      Minimum <strong>200</strong> characters, maximum <strong>2000</strong>.
+      <span id="char_count">0</span>/<span id="char_max">2000</span>
+    </small>
+    {% if form.text_content.errors %}
+      <div style="color:#b00020;margin-top:6px;">{{ form.text_content.errors|join:", " }}</div>
+    {% endif %}
+  </div>
 
-    <div id="image_upload_div" style="display:none;">
-        <label for="images">Upload Images:</label><br>
-        <!-- ✅ multiple + restrict to images -->
-        <input type="file" name="images" id="id_images" multiple accept="image/*">
-    </div>
+  <div id="image_upload_div" style="display:none;">
+    <label for="id_images">Upload Images:</label><br>
+    <input type="file" name="images" id="id_images" multiple accept="image/*">
+  </div>
 
-    <div id="pdf_upload_div" style="display:none;">
-        <label for="id_pdf">Upload PDF:</label><br>
-        <!-- ✅ restrict to PDF only -->
-        <input type="file" name="pdf" id="id_pdf" accept=".pdf,application/pdf">
-        {% if form.pdf.errors %}
-          <div style="color:#c00">{{ form.pdf.errors|join:", " }}</div>
-        {% endif %}
-    </div>
+  <div id="pdf_upload_div" style="display:none;">
+    <label for="id_pdf">Upload PDF:</label><br>
+    <input type="file" name="pdf" id="id_pdf" accept=".pdf,application/pdf">
+    {% if form.pdf.errors %}
+      <div style="color:#b00020;margin-top:6px;">{{ form.pdf.errors|join:", " }}</div>
+    {% endif %}
+  </div>
 
-    <br>
-    <button type="submit" class="btn btn-primary">📤 Upload Letter</button>
+  <br>
+  <button type="submit" class="btn btn-primary">📤 Upload Letter</button>
 </form>
 
 <br>
 <a href="{% url 'view_profile' %}" class="btn btn-secondary">← Back to Profile</a>
 
 <script>
-    const letterTypeSelect = document.getElementById('id_letter_type');
-    const textDiv = document.getElementById('text_content_div');
+  // Toggle which upload UI is visible
+  (function () {
+    const sel = document.getElementById('id_letter_type');
+    const textDiv  = document.getElementById('text_content_div');
     const imageDiv = document.getElementById('image_upload_div');
-    const pdfDiv = document.getElementById('pdf_upload_div');
+    const pdfDiv   = document.getElementById('pdf_upload_div');
 
-    function toggleUploadFields() {
-        const choice = letterTypeSelect.value;
-        textDiv.style.display = (choice === 'text') ? 'block' : 'none';
-        imageDiv.style.display = (choice === 'image') ? 'block' : 'none';
-        pdfDiv.style.display = (choice === 'pdf') ? 'block' : 'none';
+    function toggle() {
+      const v = sel ? sel.value : '';
+      if (textDiv)  textDiv.style.display  = (v === 'text')  ? 'block' : 'none';
+      if (imageDiv) imageDiv.style.display = (v === 'image') ? 'block' : 'none';
+      if (pdfDiv)   pdfDiv.style.display   = (v === 'pdf')   ? 'block' : 'none';
     }
 
-    letterTypeSelect.addEventListener('change', toggleUploadFields);
-    toggleUploadFields();  // Run once at load
+    if (sel) sel.addEventListener('change', toggle);
+    toggle(); // initial render (important after server-side errors)
+  })();
+</script>
+
+<script>
+  // Live counter + client-side guard for text letters
+  (function () {
+    const MIN = 200, MAX = 2000;
+
+    const sel  = document.getElementById('id_letter_type');
+    const ta   = document.getElementById('id_text_content');
+    const help = document.getElementById('letter_help');
+    const cnt  = document.getElementById('char_count');
+    const max  = document.getElementById('char_max');
+
+    if (ta) {
+      ta.setAttribute('maxlength', String(MAX));
+      if (!ta.getAttribute('rows')) ta.setAttribute('rows', '6');
+    }
+    if (max) max.textContent = String(MAX);
+
+    function updateCounter() {
+      if (!ta || !cnt || !help) return;
+      const len = (ta.value || '').trim().length;
+      cnt.textContent = String(len);
+      // show red hint when under min and type=text
+      const isText = (sel && sel.value === 'text');
+      help.style.color = (isText && len > 0 && len < MIN) ? '#b00020' : '#555';
+    }
+
+    if (ta) ta.addEventListener('input', updateCounter);
+    if (sel) sel.addEventListener('change', updateCounter);
+    updateCounter();
+
+    // Block submit if text length not within [MIN, MAX]
+    const form = document.querySelector('form');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        if (sel && sel.value === 'text' && ta) {
+          const len = (ta.value || '').trim().length;
+          if (len < MIN || len > MAX) {
+            e.preventDefault();
+            alert(`❌ Letter text must be between ${MIN} and ${MAX} characters (you have ${len}).`);
+            ta.focus();
+          }
+        }
+      });
+    }
+  })();
 </script>
 {% endblock %}

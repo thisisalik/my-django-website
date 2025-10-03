@@ -1,14 +1,26 @@
 <h2>Login</h2>
 
-<form method="post">
+<form method="post" novalidate>
   {% csrf_token %}
-  {{ form.as_p }}
+
+  {% if form.non_field_errors %}
+    <div style="color:#b00020;margin:8px 0;">{{ form.non_field_errors }}</div>
+  {% endif %}
 
   <p>
-    <label>
-      <input type="checkbox" name="remember_me" checked>
-      Remember me
-    </label>
+    <label for="{{ form.username.id_for_label }}">Email</label>
+    {{ form.username }}
+    {% for e in form.username.errors %}<div style="color:#b00020">{{ e }}</div>{% endfor %}
+  </p>
+
+  <p>
+    {{ form.password.label_tag }}
+    {{ form.password }}
+    {% for e in form.password.errors %}<div style="color:#b00020">{{ e }}</div>{% endfor %}
+  </p>
+
+  <p>
+    <label><input type="checkbox" name="remember_me" checked> Remember me</label>
   </p>
 
   <button type="submit">Login</button>

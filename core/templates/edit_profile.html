@@ -18,6 +18,18 @@
 </style>
 
 <h2>Edit Your Profile ✏️</h2>
+{# show ONLY error messages, never success/info #}
+{% if messages %}
+  {% for message in messages %}
+    {% if "error" in message.tags %}
+      <div style="padding:10px;border-radius:8px;margin:10px 0;
+                  background:#ffe8e8;color:#b00020;border:1px solid #f5b5b5;">
+        {{ message }}
+      </div>
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
 
 <form method="POST" enctype="multipart/form-data" id="profile-form">
     {% csrf_token %}
@@ -280,7 +292,12 @@
     <div id="letter_upload_section" style="margin-top: 20px;">
         <p><strong>Add Your Letter:</strong></p>
         <p><label for="id_letter_type">Letter Type:</label> {{ letter_form.letter_type }}</p>
-
+        {% if letter_form.non_field_errors %}
+        <div style="color:#b00020;margin:6px 0;">
+          {{ letter_form.non_field_errors.0 }}
+        </div>
+      {% endif %}
+      
         <div id="text_content_div" style="display:none;">
             <label for="id_text_content">Text Content:</label><br>
             {{ letter_form.text_content }}
@@ -415,11 +432,11 @@ document.addEventListener('DOMContentLoaded', function () {
        document.getElementById('profile-form').addEventListener('submit', function (e) {
         const textareas = document.querySelectorAll("textarea[name^='text_content_']");
         for (let textarea of textareas) {
-            if (textarea.value.trim().length < 4) {
-                e.preventDefault();
-                alert("❌ Letter text must be at least 4 characters long.");
-                textarea.focus();
-                return false;
+            if (textarea.value.trim().length < MIN_CHARS || textarea.value.trim().length > MAX_CHARS) {
+    e.preventDefault();
+    alert(`❌ Letter text must be between ${MIN_CHARS} and ${MAX_CHARS} characters.`);
+    textarea.focus();
+    return false;
             }
         }
 
@@ -469,4 +486,43 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   </script>
   
+  <script>
+    (function () {
+      const MIN = 200, MAX = 2000;
+    
+      function wireCounter(textarea) {
+        if (!textarea || textarea.dataset.counterReady) return;
+        textarea.dataset.counterReady = "1";
+        textarea.setAttribute('maxlength', String(MAX));
+        if (!textarea.getAttribute('rows')) textarea.setAttribute('rows', '6');
+    
+        const help = document.createElement('small');
+        help.style.display = 'block';
+        help.style.marginTop = '6px';
+        help.style.color = '#555';
+        help.innerHTML = `Minimum <strong>${MIN}</strong> characters, maximum <strong>${MAX}</strong>. <span class="count">0</span>/${MAX}`;
+        textarea.insertAdjacentElement('afterend', help);
+    
+        function update() {
+          const len = (textarea.value || '').trim().length;
+          help.querySelector('.count').textContent = String(len);
+          help.style.color = (len > 0 && len < MIN) ? '#b00020' : '#555';
+        }
+        textarea.addEventListener('input', update);
+        update();
+      }
+    
+      // Existing text letters
+      document.querySelectorAll("textarea[name^='text_content_']").forEach(wireCounter);
+    
+      // New text letter (Add Your Letter)
+      const newText = document.getElementById('id_text_content');
+      if (newText) {
+        wireCounter(newText);
+      }
+    })();
+    </script>
+    
+    
+    
 {% endblock %}

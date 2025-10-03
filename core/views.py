@@ -11,6 +11,7 @@ from django.conf import settings
 from django.core.files import File
 import mimetypes
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.contrib import messages as dj_messages
 
 import uuid  
 from .forms import (
@@ -214,82 +215,54 @@ def react_to_letter(request, letter_id):
 def upload_letter(request):
     profile = request.user.profile
 
-    existing_letter = Letter.objects.filter(profile=profile).first()
-
-    # ✅ Redirect only if a usable letter exists
-    if existing_letter:
-        if existing_letter.letter_type == 'text' and existing_letter.text_content:
+    # If there is already a usable letter, send them to the profile
+    existing = Letter.objects.filter(profile=profile).first()
+    if existing:
+        usable = (
+            (existing.letter_type == 'text' and bool(existing.text_content)) or
+            (existing.letter_type == 'pdf' and bool(existing.pdf)) or
+            (existing.letter_type == 'image' and
+             LetterImage.objects.filter(letter=existing).exists())
+        )
+        if usable:
             return redirect('view_profile')
-        if existing_letter.letter_type == 'pdf' and existing_letter.pdf:
-            return redirect('view_profile')
-        if existing_letter.letter_type == 'image':
-            # Only block if the letter *still has* images
-            if LetterImage.objects.filter(letter=existing_letter).exists():
-                return redirect('view_profile')
-            else:
-                existing_letter.delete()
-                messages.info(request, "Previous empty letter cleared. You can upload a new one.")
+        # empty image-letter -> delete silently, no flash
+        if existing.letter_type == 'image':
+            existing.delete()
 
-    # ✅ Handle letter creation
     if request.method == 'POST':
         form = LetterForm(request.POST, request.FILES)
 
-        # ---- strict validation per selected type ----
-        lt = request.POST.get('letter_type')
-        text_content = (request.POST.get('text_content') or '').strip()
-        pdf = request.FILES.get('pdf')
-        images = request.FILES.getlist('images')
-
-        if lt == 'text':
-            if not text_content:
-                messages.error(request, "❌ Text letter cannot be empty.")
-                return render(request, 'upload_letter.html', {'form': form})
-
-        elif lt == 'pdf':
-            if not pdf:
-                messages.error(request, "❌ Please choose a PDF file.")
-                return render(request, 'upload_letter.html', {'form': form})
-            ct = (pdf.content_type or '').lower()
-            if not (ct == 'application/pdf' or pdf.name.lower().endswith('.pdf')):
-                messages.error(request, "❌ Selected file is not a PDF. Please choose a .pdf file.")
-                return render(request, 'upload_letter.html', {'form': form})
-
-        elif lt == 'image':
-            if not images:
-                messages.error(request, "❌ Please upload at least one image for an image letter.")
-                return render(request, 'upload_letter.html', {'form': form})
-            for f in images:
-                ct = (f.content_type or '').lower()
-                if not (ct.startswith('image/') or f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif'))):
-                    messages.error(request, "❌ Only image files are allowed for an Image letter.")
-                    return render(request, 'upload_letter.html', {'form': form})
-        else:
-            messages.error(request, "❌ Please pick a letter type.")
+        # Require a letter type (your form sets required=False)
+        lt = (request.POST.get('letter_type') or '').strip()
+        if not lt:
+            form.add_error('letter_type', "❌ Please pick a letter type.")
             return render(request, 'upload_letter.html', {'form': form})
 
-        # ---- save like before ----
-        if form.is_valid():
-            if lt == 'text':
-                Letter.objects.create(profile=profile, letter_type='text', text_content=text_content)
+        # Let the form enforce all other rules (200–2000, pdf, images, etc.)
+        if not form.is_valid():
+            return render(request, 'upload_letter.html', {'form': form})
 
-            elif lt == 'pdf':
-                Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+        # Create the letter
+        if lt == 'text':
+            text = (form.cleaned_data.get('text_content') or '').strip()
+            Letter.objects.create(profile=profile, letter_type='text', text_content=text)
 
-            elif lt == 'image':
-                letter = Letter.objects.create(profile=profile, letter_type='image')
-                for img in images:
-                    # double-guard (skip non-images silently)
-                    ct = (img.content_type or '').lower()
-                    if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
-                        LetterImage.objects.create(letter=letter, image=img)
+        elif lt == 'pdf':
+            pdf = form.cleaned_data.get('pdf')
+            Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
 
-            messages.success(request, "✅ Letter uploaded successfully!")
-            return redirect('view_profile')
-        else:
-            messages.error(request, "❌ Please correct the errors below.")
-    else:
-        form = LetterForm()
+        elif lt == 'image':
+            letter = Letter.objects.create(profile=profile, letter_type='image')
+            for img in request.FILES.getlist('images'):
+                # form.clean already checked these are images
+                LetterImage.objects.create(letter=letter, image=img)
 
+        # No success flash; just go back
+        return redirect('view_profile')
+
+    # GET
+    form = LetterForm()
     return render(request, 'upload_letter.html', {'form': form})
 
 # 🧠 View Matches
@@ -344,7 +317,6 @@ def message_view(request, profile_id):
 
     return render(request, 'messages.html', {'receiver': receiver, 'messages': messages_qs, 'form': form})
 
-
 @login_required
 def edit_profile(request):
     profile = request.user.profile
@@ -354,52 +326,75 @@ def edit_profile(request):
         form = ProfileForm(request.POST, request.FILES, instance=profile)
         letter_form = LetterForm(request.POST, request.FILES)
 
+        had_letter_error = False  # block redirect if any letter error
+
+        # -- save profile (same as before) --
         if form.is_valid():
-            profile = form.save(commit=False)
+            p = form.save(commit=False)
+            p.connection_types = request.POST.getlist('connection_types')
+            p.save()
+        # if profile form invalid, we'll re-render at bottom
 
-            # ✅ Fix: preserve selected connection types
-            profile.connection_types = request.POST.getlist('connection_types')
-            profile.save()
-
-            for letter in letters.filter(letter_type='text'):
-                text_key = f'text_content_{letter.id}'
-                new_text = request.POST.get(text_key, '').strip()
-                if new_text:
+        # -- edits to EXISTING text letters: require 200..2000 --
+        for letter in letters.filter(letter_type='text'):
+            key = f'text_content_{letter.id}'
+            new_text = (request.POST.get(key) or '').strip()
+            if new_text:
+                if len(new_text) < LETTER_MIN_CHARS or len(new_text) > LETTER_MAX_CHARS:
+                    had_letter_error = True
+                    # put the error on the add-letter form as a non-field error so it shows under that section
+                    letter_form.add_error(
+                        None,
+                        f"❌ Letter text must be between {LETTER_MIN_CHARS} and {LETTER_MAX_CHARS} characters."
+                    )
+                else:
                     letter.text_content = new_text
                     letter.save()
 
-            delete_ids_str = request.POST.get('delete_image_ids', '')
-            if delete_ids_str:
-                delete_ids = [int(i) for i in delete_ids_str.split(',') if i.isdigit()]
-                LetterImage.objects.filter(id__in=delete_ids, letter__profile=profile).delete()
+        # -- image deletes / adds (unchanged) --
+        delete_ids_str = request.POST.get('delete_image_ids', '')
+        if delete_ids_str:
+            delete_ids = [int(i) for i in delete_ids_str.split(',') if i.isdigit()]
+            LetterImage.objects.filter(id__in=delete_ids, letter__profile=profile).delete()
 
-            for letter in letters.filter(letter_type='image'):
-                if not letter.images.exists():
-                    letter.delete()
+        for letter in letters.filter(letter_type='image'):
+            if not letter.images.exists():
+                letter.delete()
 
-            for letter in letters.filter(letter_type='image'):
-                for img in request.FILES.getlist('images'):
-                    LetterImage.objects.create(letter=letter, image=img)
+        for letter in letters.filter(letter_type='image'):
+            for img in request.FILES.getlist('images'):
+                LetterImage.objects.create(letter=letter, image=img)
 
+        # -- NEW letter creation (uses LetterForm.clean to enforce 200..2000) --
+        attempted = any([
+            request.POST.get('letter_type'),
+            (request.POST.get('text_content') or '').strip(),
+            bool(request.FILES.get('pdf')),
+            bool(request.FILES.getlist('images')),
+        ])
+
+        if attempted:
             if letter_form.is_valid():
-                letter_type = letter_form.cleaned_data.get('letter_type')
-                text_content = letter_form.cleaned_data.get('text_content', '').strip()
+                lt = letter_form.cleaned_data.get('letter_type')
+                text_content = (letter_form.cleaned_data.get('text_content') or '').strip()
                 pdf = letter_form.cleaned_data.get('pdf')
                 images = request.FILES.getlist('images')
 
-                if letter_type and (text_content or pdf or images):
-                    letter = Letter.objects.create(
-                        profile=profile,
-                        letter_type=letter_type,
-                        text_content=text_content,
-                        pdf=pdf
-                    )
+                if lt == 'text':
+                    Letter.objects.create(profile=profile, letter_type='text', text_content=text_content)
+                elif lt == 'pdf':
+                    Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+                elif lt == 'image':
+                    new_letter = Letter.objects.create(profile=profile, letter_type='image')
+                    for img in images:
+                        LetterImage.objects.create(letter=new_letter, image=img)
+            else:
+                had_letter_error = True
+                # keep errors on the form; no flash messages
 
-                    if letter_type == 'image':
-                        for img in images:
-                            LetterImage.objects.create(letter=letter, image=img)
-
-            messages.success(request, "✅ Profile updated successfully!")
+        # -- redirect only when everything is valid --
+        if form.is_valid() and not had_letter_error:
+            # no success flash here (you said you don't want green messages)
             return redirect('view_profile')
 
     else:
@@ -407,7 +402,6 @@ def edit_profile(request):
         letter_form = LetterForm()
 
     ages = range(18, 101)
-
     only_image_letter = (
         letters.count() == 1 and
         letters.first().letter_type == 'image' and
@@ -422,7 +416,7 @@ def edit_profile(request):
 
     return render(request, 'edit_profile.html', {
         'form': form,
-        'letter_form': letter_form,
+        'letter_form': letter_form,  # make sure template can show its errors
         'letters': letters,
         'unread_messages_count': unread_messages_count,
         'unseen_matches_count': unseen_matches_count,
@@ -430,6 +424,7 @@ def edit_profile(request):
         'ages': ages,
         'only_image_letter': only_image_letter,
     })
+
 
 def _save_temp_profile_picture(uploaded_file):
     """Save uploaded image to MEDIA_ROOT/tmp_reg and return relative path 'tmp_reg/<filename>'."""
