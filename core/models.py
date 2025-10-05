@@ -24,12 +24,19 @@ class Profile(models.Model):
     def get_connection_type_labels(self):
         label_map = dict(self.CONNECTION_CHOICES)
         return [label_map.get(c, c) for c in self.connection_types]
+from cloudinary_storage.storage import RawMediaCloudinaryStorage
 
 class Letter(models.Model):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE)
     letter_type = models.CharField(max_length=10, choices=[('text', 'Text'), ('image', 'Image'), ('pdf', 'PDF')])
     text_content = models.TextField(blank=True, null=True)
-    pdf = models.FileField(upload_to='letters/pdf/', blank=True, null=True)
+    pdf = models.FileField(
+        upload_to='letters/pdf/',
+        blank=True,
+        null=True,
+        storage=RawMediaCloudinaryStorage()
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
 class LetterImage(models.Model):

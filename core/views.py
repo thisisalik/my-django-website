@@ -796,6 +796,7 @@ from django.db.models import Q
 def chat_list_partial_view(request):
     return chat_list_view(request, partial=True)
 
+@login_required
 def chat_list_view(request, partial=False):
     profile = request.user.profile
 
