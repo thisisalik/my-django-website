@@ -138,6 +138,13 @@
     </div>
     <div class="pdf-canvas-wrap">
       <canvas id="pdfCanvas-{{ gid }}"></canvas>
+      <iframe
+    id="pdfFrame-{{ gid }}"
+    src="{{ letter.pdf.url }}#view=FitH"
+    style="width:100%; height:60vh; border:0; display:none"
+    title="PDF"
+    loading="lazy">
+  </iframe>
     </div>
   </div>
 
