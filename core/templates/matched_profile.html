@@ -169,16 +169,20 @@
       const zoomLabel  = document.getElementById('zoomLabel-{{ gid }}');
       const pageLabel  = document.getElementById('pageLabel-{{ gid }}');
       const dpr        = window.devicePixelRatio || 1;
-
+  
+      /* 👇 NEW: fallback wiring */
+      const fallbackFrame = document.getElementById('pdfFrame-{{ gid }}');
+      let rendered = false;
+  
       let pdfDoc=null, pageNum=1, pageCount=1, baseScale=1, scale=1, rendering=false;
-
+  
       function updateLabels(){
         zoomLabel.textContent = Math.round(scale*100) + '%';
         pageLabel.textContent = pageNum + ' / ' + pageCount;
         prevBtn.disabled = (pageNum<=1);
         nextBtn.disabled = (pageNum>=pageCount);
       }
-
+  
       function fitToWidth(page){
         const card = document.getElementById('pdfCard-{{ gid }}');
         const wrap = card.querySelector('.pdf-canvas-wrap');
@@ -187,7 +191,7 @@
         baseScale = available / viewport1.width;
         scale = baseScale;
       }
-
+  
       function renderPage(){
         if (rendering) return;
         rendering = true;
@@ -199,31 +203,43 @@
           canvas.width = Math.round(viewport.width*dpr);
           canvas.height = Math.round(viewport.height*dpr);
           const transform = dpr!==1 ? [dpr,0,0,dpr,0,0] : null;
-          page.render({ canvasContext: ctx, viewport, transform }).promise.finally(()=>{
-            rendering=false; updateLabels();
-          });
+  
+          /* 👇 CHANGED: mark success when draw finishes */
+          page.render({ canvasContext: ctx, viewport, transform }).promise
+            .then(function(){ rendered = true; })
+            .finally(function(){
+              rendering=false; updateLabels();
+            });
         });
       }
-
+  
       function start(){
         pdfjsLib.getDocument(url).promise.then(doc=>{
           pdfDoc = doc; pageCount = doc.numPages; pageNum = 1;
           renderPage();
-        }).catch(console.error);
+        }).catch(function(){
+          /* 👇 CHANGED: on error, show iframe fallback */
+          if (fallbackFrame) fallbackFrame.style.display = 'block';
+        });
+  
+        /* 👇 NEW: if nothing rendered soon (Safari/CORS), show fallback */
+        setTimeout(function(){
+          if (!rendered && fallbackFrame) fallbackFrame.style.display = 'block';
+        }, 1200);
       }
-
+  
       function setWorker(){
         pdfjsLib.GlobalWorkerOptions.workerSrc =
           "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
       }
-
+  
       if (window.pdfjsLib){ setWorker(); start(); }
       else {
         const iv = setInterval(()=>{
           if (window.pdfjsLib){ clearInterval(iv); setWorker(); start(); }
         }, 40);
       }
-
+  
       zoomInBtn.addEventListener('click', ()=>{ scale=Math.min(scale+0.15,4); renderPage(); });
       zoomOutBtn.addEventListener('click', ()=>{ scale=Math.max(scale-0.15,0.4); renderPage(); });
       fitBtn.addEventListener('click', ()=>{ baseScale=1; renderPage(); });
@@ -231,6 +247,7 @@
       nextBtn.addEventListener('click', ()=>{ if(pageNum<pageCount){ pageNum++; renderPage(); } });
     })();
   </script>
+  
 {% endwith %}
 
 {% else %}
