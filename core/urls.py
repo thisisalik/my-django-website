@@ -34,6 +34,7 @@ urlpatterns = [
     path("chats/partial/", views.chat_list_partial_view, name="chat_list_partial"),
     path('accounts/login/', CustomLoginView.as_view(), name='login'),
     path('unmatch/<int:match_id>/', views.unmatch, name='unmatch'),
+    path('letter/pdf/<int:letter_id>/', views.letter_pdf_proxy, name='letter_pdf_proxy'),
 
 ]
 
