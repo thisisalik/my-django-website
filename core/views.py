@@ -39,8 +39,8 @@ LETTER_MAX_CHARS = 2000
 @require_GET
 def letter_pdf_proxy(request, letter_id):
     """
-    Stream a Cloudinary 'raw' PDF through our domain with a short-lived signed URL.
-    Tries 'authenticated' delivery first; if the asset is 'private', falls back.
+    Stream a Cloudinary raw PDF through our domain using a short-lived **signed** URL.
+    Order: signed 'upload' -> 'authenticated' -> 'private'.
     """
     letter = get_object_or_404(Letter, id=letter_id)
     if letter.letter_type != 'pdf' or not letter.pdf:
@@ -49,66 +49,66 @@ def letter_pdf_proxy(request, letter_id):
     # authorize: owner or active match
     me = request.user.profile
     owner = letter.profile
-    is_owner = (me.id == owner.id)
-    is_active_match = Match.objects.filter(active=True).filter(
-        Q(user1__in=[me, owner], user2__in=[me, owner])
-    ).exists()
-    if not (is_owner or is_active_match):
+    if not (me.id == owner.id or Match.objects.filter(active=True)
+            .filter(Q(user1__in=[me, owner], user2__in=[me, owner])).exists()):
         return HttpResponseForbidden("Not allowed")
 
-    # --- derive public_id and extension from the stored URL/name ---
-    path = urlparse(letter.pdf.url).path  # e.g. '/<cloud>/raw/upload/v1/media/letters/pdf/foo.pdf'
+    # --- derive public_id, extension, and (optional) version from the stored URL ---
+    path = urlparse(letter.pdf.url).path  # '/<cloud>/raw/upload/v1/media/letters/pdf/foo.pdf'
+    version = None
     try:
-        after_upload = path.split('/upload/')[1]  # 'v1/media/letters/pdf/foo.pdf'
+        after_upload = path.split('/upload/')[1]   # 'v1/media/letters/pdf/foo.pdf' OR 'media/...'
         parts = after_upload.split('/')
         if parts and parts[0].startswith('v') and parts[0][1:].isdigit():
-            parts = parts[1:]                     # drop version segment if present
-        public_id_with_ext = '/'.join(parts)
+            version = parts[0][1:]                 # '1'
+            parts = parts[1:]                      # drop version segment
+        public_id_with_ext = '/'.join(parts)       # 'media/letters/pdf/foo.pdf'
     except Exception:
-        public_id_with_ext = letter.pdf.name      # fallback to stored name
+        public_id_with_ext = letter.pdf.name       # storage fallback
 
-    public_id_no_ext, ext_with_dot = os.path.splitext(public_id_with_ext)
-    ext = (ext_with_dot.lstrip('.') or 'pdf').lower()
+    public_id_no_ext, ext_dot = os.path.splitext(public_id_with_ext)
+    ext = (ext_dot.lstrip('.') or 'pdf').lower()
 
     def build_signed_url(delivery_type: str) -> str:
-        url, _ = cloudinary_url(
-            public_id_no_ext,
+        # For type='upload' you can sign the URL (required when "Require signed delivery" is on).
+        # Note: 'expires_at' is supported for 'authenticated'/'private' but ignored for 'upload'.
+        params = dict(
             resource_type="raw",
-            type=delivery_type,        # 'authenticated' or 'private'
-            format=ext,                # ensure .pdf is present
+            type=delivery_type,
+            format=ext,
             sign_url=True,
             secure=True,
-            expires_at=int(time.time()) + 300  # 5 minutes
         )
+        if version:
+            params["version"] = version
+        if delivery_type in ("authenticated", "private"):
+            params["expires_at"] = int(time.time()) + 300  # 5 minutes
+        url, _ = cloudinary_url(public_id_no_ext, **params)
         return url
 
-    # --- try authenticated first, then private as a fallback ---
-    tried = []
-    for delivery_type in ("authenticated", "private"):
+    # Try signed 'upload' first (matches how the asset was stored).
+    for delivery_type in ("upload", "authenticated", "private"):
         signed = build_signed_url(delivery_type)
-        tried.append((delivery_type, signed))
         r = requests.get(signed, stream=True, timeout=15)
         if r.status_code == 200:
-            # stream to client
             resp = StreamingHttpResponse(
                 r.iter_content(8192),
                 content_type=r.headers.get('Content-Type', 'application/pdf'),
             )
             filename = os.path.basename(public_id_no_ext) + '.' + ext
-            resp['Content-Disposition'] = r.headers.get(
-                'Content-Disposition', f'inline; filename="{filename}"'
-            )
+            resp['Content-Disposition'] = r.headers.get('Content-Disposition',
+                                                        f'inline; filename="{filename}"')
             if 'Content-Length' in r.headers:
                 resp['Content-Length'] = r.headers['Content-Length']
             resp['Cache-Control'] = 'private, max-age=3600'
             return resp
-        # if 404, try the other type; for other errors, raise now
+
+        # If unauthorized/not found, try next type; surface other errors immediately.
         if r.status_code not in (401, 403, 404):
             r.raise_for_status()
 
-    # If we reach here, both attempts failed; raise the last response as error
+    # If all attempts failed, raise the last one
     r.raise_for_status()
-
 
 @login_required
 def home_redirect(request):
