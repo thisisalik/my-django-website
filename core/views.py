@@ -34,12 +34,13 @@ from django.shortcuts import redirect
 LETTER_MIN_CHARS = 200
 LETTER_MAX_CHARS = 2000
 
+
 @login_required
 @require_GET
 def letter_pdf_proxy(request, letter_id):
     """
-    Stream a Cloudinary 'raw' PDF through our domain using a short-lived
-    signed (authenticated) Cloudinary URL. Fixes CORS/CORP and 401 issues.
+    Stream a Cloudinary 'raw' PDF through our domain with a short-lived signed URL.
+    Tries 'authenticated' delivery first; if the asset is 'private', falls back.
     """
     letter = get_object_or_404(Letter, id=letter_id)
     if letter.letter_type != 'pdf' or not letter.pdf:
@@ -55,46 +56,58 @@ def letter_pdf_proxy(request, letter_id):
     if not (is_owner or is_active_match):
         return HttpResponseForbidden("Not allowed")
 
-    # ----- Build signed URL (include correct extension) -----
-    # Prefer deriving from the URL so we handle versioned paths.
+    # --- derive public_id and extension from the stored URL/name ---
     path = urlparse(letter.pdf.url).path  # e.g. '/<cloud>/raw/upload/v1/media/letters/pdf/foo.pdf'
     try:
-        after_upload = path.split('/upload/')[1]    # 'v1/media/letters/pdf/foo.pdf'
+        after_upload = path.split('/upload/')[1]  # 'v1/media/letters/pdf/foo.pdf'
         parts = after_upload.split('/')
         if parts and parts[0].startswith('v') and parts[0][1:].isdigit():
-            parts = parts[1:]
-        public_id_with_ext = '/'.join(parts)        # 'media/letters/pdf/foo.pdf'
+            parts = parts[1:]                     # drop version segment if present
+        public_id_with_ext = '/'.join(parts)
     except Exception:
-        public_id_with_ext = letter.pdf.name        # fallback from storage
+        public_id_with_ext = letter.pdf.name      # fallback to stored name
 
     public_id_no_ext, ext_with_dot = os.path.splitext(public_id_with_ext)
-    ext = ext_with_dot.lstrip('.') or 'pdf'         # ensure we end with .pdf
+    ext = (ext_with_dot.lstrip('.') or 'pdf').lower()
 
-    signed_url, _ = cloudinary_url(
-        public_id_no_ext,
-        resource_type="raw",
-        type="authenticated",
-        format=ext,                  # <-- this adds ".pdf" to the URL
-        sign_url=True,
-        secure=True,
-        expires_at=int(time.time()) + 300,  # 5 minutes
-    )
+    def build_signed_url(delivery_type: str) -> str:
+        url, _ = cloudinary_url(
+            public_id_no_ext,
+            resource_type="raw",
+            type=delivery_type,        # 'authenticated' or 'private'
+            format=ext,                # ensure .pdf is present
+            sign_url=True,
+            secure=True,
+            expires_at=int(time.time()) + 300  # 5 minutes
+        )
+        return url
 
-    # stream to client
-    r = requests.get(signed_url, stream=True, timeout=15)
+    # --- try authenticated first, then private as a fallback ---
+    tried = []
+    for delivery_type in ("authenticated", "private"):
+        signed = build_signed_url(delivery_type)
+        tried.append((delivery_type, signed))
+        r = requests.get(signed, stream=True, timeout=15)
+        if r.status_code == 200:
+            # stream to client
+            resp = StreamingHttpResponse(
+                r.iter_content(8192),
+                content_type=r.headers.get('Content-Type', 'application/pdf'),
+            )
+            filename = os.path.basename(public_id_no_ext) + '.' + ext
+            resp['Content-Disposition'] = r.headers.get(
+                'Content-Disposition', f'inline; filename="{filename}"'
+            )
+            if 'Content-Length' in r.headers:
+                resp['Content-Length'] = r.headers['Content-Length']
+            resp['Cache-Control'] = 'private, max-age=3600'
+            return resp
+        # if 404, try the other type; for other errors, raise now
+        if r.status_code not in (401, 403, 404):
+            r.raise_for_status()
+
+    # If we reach here, both attempts failed; raise the last response as error
     r.raise_for_status()
-
-    resp = StreamingHttpResponse(
-        r.iter_content(8192),
-        content_type=r.headers.get('Content-Type', 'application/pdf'),
-    )
-    filename = os.path.basename(public_id_no_ext) + '.' + ext
-    resp['Content-Disposition'] = r.headers.get('Content-Disposition', f'inline; filename="{filename}"')
-    if 'Content-Length' in r.headers:
-        resp['Content-Length'] = r.headers['Content-Length']
-    resp['Cache-Control'] = 'private, max-age=3600'
-    return resp
-
 
 
 @login_required
