@@ -111,7 +111,7 @@
     {% endif %}
 
 {% else %}
-{% if letter.letter_type == "pdf" and letter.pdf %}
+{% elif letter.letter_type == "pdf" and letter.pdf %}
   <div class="letter-card">
     <iframe
       src="{{ letter.pdf.url }}#view=FitH"
@@ -126,7 +126,7 @@
       </a>
     </div>
   </div>
-{% endif %}
+
 
 
 {% else %}
