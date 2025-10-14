@@ -37,25 +37,39 @@ def letter_pdf_proxy(request, letter_id):
     if letter.letter_type != 'pdf' or not letter.pdf:
         return HttpResponseNotFound("Not a PDF")
 
-    # ✅ authorize: owner OR active match partner may view
-    me: Profile = request.user.profile
-    owner: Profile = letter.profile
+    me = request.user.profile
+    owner = letter.profile
     is_owner = (me.id == owner.id)
     is_active_match = Match.objects.filter(active=True).filter(
         Q(user1__in=[me, owner], user2__in=[me, owner])
     ).exists()
-
     if not (is_owner or is_active_match):
         return HttpResponseForbidden("Not allowed")
 
-    r = requests.get(letter.pdf.url, stream=True, timeout=15)
+    # --------- CHANGE STARTS HERE ----------
+    # Build a short-lived signed URL for Cloudinary "raw" resource
+    public_id_without_ext = os.path.splitext(letter.pdf.name)[0]  # e.g. 'media/letters/pdf/xyz'
+    signed_url, _ = cloudinary_url(
+        public_id_without_ext,
+        resource_type="raw",
+        type="authenticated",     # signed delivery
+        sign_url=True,
+        secure=True,
+        expires_at=int(time.time()) + 300  # 5 minutes
+    )
+
+    r = requests.get(signed_url, stream=True, timeout=15)
     r.raise_for_status()
+    # --------- CHANGE ENDS HERE ----------
 
-    ct = r.headers.get('Content-Type', 'application/pdf')
-    disp = r.headers.get('Content-Disposition', f'inline; filename="{os.path.basename(letter.pdf.name)}"')
-
-    resp = StreamingHttpResponse(r.iter_content(8192), content_type=ct)
-    resp['Content-Disposition'] = disp
+    resp = StreamingHttpResponse(
+        r.iter_content(8192),
+        content_type=r.headers.get('Content-Type', 'application/pdf'),
+    )
+    resp['Content-Disposition'] = r.headers.get(
+        'Content-Disposition',
+        f'inline; filename="{os.path.basename(letter.pdf.name)}"'
+    )
     resp['Cache-Control'] = 'private, max-age=3600'
     return resp
 
