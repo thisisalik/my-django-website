@@ -16,6 +16,9 @@ import requests
 from django.http import StreamingHttpResponse, HttpResponseNotFound, HttpResponseForbidden
 from django.views.decorators.http import require_GET
 import uuid  
+from urllib.parse import urlparse
+from cloudinary.utils import cloudinary_url
+
 from .forms import (
     LetterForm,
     MessageForm,
@@ -33,10 +36,17 @@ LETTER_MAX_CHARS = 2000
 @login_required
 @require_GET
 def letter_pdf_proxy(request, letter_id):
+    """
+    Streams a Cloudinary 'raw' PDF through our domain using a short-lived
+    signed (authenticated) Cloudinary URL so pdf.js/iframes can load it
+    without CORS/CORP issues.
+    """
+    # 1) Load & validate the letter
     letter = get_object_or_404(Letter, id=letter_id)
     if letter.letter_type != 'pdf' or not letter.pdf:
         return HttpResponseNotFound("Not a PDF")
 
+    # 2) Authorization: owner OR actively matched partner
     me = request.user.profile
     owner = letter.profile
     is_owner = (me.id == owner.id)
@@ -46,32 +56,48 @@ def letter_pdf_proxy(request, letter_id):
     if not (is_owner or is_active_match):
         return HttpResponseForbidden("Not allowed")
 
-    # --------- CHANGE STARTS HERE ----------
-    # Build a short-lived signed URL for Cloudinary "raw" resource
-    public_id_without_ext = os.path.splitext(letter.pdf.name)[0]  # e.g. 'media/letters/pdf/xyz'
+    # 3) Build a short-lived signed URL for the Cloudinary 'raw' asset
+    # Derive public_id robustly from the Cloudinary URL, regardless of versioning/folders.
+    path = urlparse(letter.pdf.url).path  # e.g. '/diuddf5mz/raw/upload/v1/media/letters/pdf/foo.pdf'
+    try:
+        after_upload = path.split('/upload/')[1]                 # 'v1/media/letters/pdf/foo.pdf'
+    except IndexError:
+        # Fallback: derive from stored name
+        public_id = os.path.splitext(letter.pdf.name)[0]
+    else:
+        parts = after_upload.split('/')
+        if parts and parts[0].startswith('v') and parts[0][1:].isdigit():
+            parts = parts[1:]                                    # drop 'v123' if present
+        public_id_with_ext = '/'.join(parts)                     # 'media/letters/pdf/foo.pdf'
+        public_id = os.path.splitext(public_id_with_ext)[0]      # 'media/letters/pdf/foo'
+
     signed_url, _ = cloudinary_url(
-        public_id_without_ext,
+        public_id,
         resource_type="raw",
-        type="authenticated",     # signed delivery
+        type="authenticated",          # signed delivery for protected files
         sign_url=True,
         secure=True,
         expires_at=int(time.time()) + 300  # 5 minutes
     )
 
+    # 4) Stream bytes to the client
     r = requests.get(signed_url, stream=True, timeout=15)
     r.raise_for_status()
-    # --------- CHANGE ENDS HERE ----------
 
     resp = StreamingHttpResponse(
-        r.iter_content(8192),
+        r.iter_content(chunk_size=8192),
         content_type=r.headers.get('Content-Type', 'application/pdf'),
     )
+    # Preserve headers for nicer inline viewing
+    filename = os.path.basename(letter.pdf.name) or "letter.pdf"
     resp['Content-Disposition'] = r.headers.get(
-        'Content-Disposition',
-        f'inline; filename="{os.path.basename(letter.pdf.name)}"'
+        'Content-Disposition', f'inline; filename="{filename}"'
     )
+    if 'Content-Length' in r.headers:
+        resp['Content-Length'] = r.headers['Content-Length']
     resp['Cache-Control'] = 'private, max-age=3600'
     return resp
+
 
 @login_required
 def home_redirect(request):
