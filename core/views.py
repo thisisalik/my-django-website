@@ -7,6 +7,7 @@ from .models import Letter, LetterImage, Profile, LetterLike, Match, Message
 from django.db.models import Q
 from django.views.decorators.http import require_POST
 import os
+import time  
 from django.conf import settings
 from django.core.files import File
 import mimetypes
