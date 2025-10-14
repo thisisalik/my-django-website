@@ -38,16 +38,14 @@ LETTER_MAX_CHARS = 2000
 @require_GET
 def letter_pdf_proxy(request, letter_id):
     """
-    Streams a Cloudinary 'raw' PDF through our domain using a short-lived
-    signed (authenticated) Cloudinary URL so pdf.js/iframes can load it
-    without CORS/CORP issues.
+    Stream a Cloudinary 'raw' PDF through our domain using a short-lived
+    signed (authenticated) Cloudinary URL. Fixes CORS/CORP and 401 issues.
     """
-    # 1) Load & validate the letter
     letter = get_object_or_404(Letter, id=letter_id)
     if letter.letter_type != 'pdf' or not letter.pdf:
         return HttpResponseNotFound("Not a PDF")
 
-    # 2) Authorization: owner OR actively matched partner
+    # authorize: owner or active match
     me = request.user.profile
     owner = letter.profile
     is_owner = (me.id == owner.id)
@@ -57,47 +55,46 @@ def letter_pdf_proxy(request, letter_id):
     if not (is_owner or is_active_match):
         return HttpResponseForbidden("Not allowed")
 
-    # 3) Build a short-lived signed URL for the Cloudinary 'raw' asset
-    # Derive public_id robustly from the Cloudinary URL, regardless of versioning/folders.
-    path = urlparse(letter.pdf.url).path  # e.g. '/diuddf5mz/raw/upload/v1/media/letters/pdf/foo.pdf'
+    # ----- Build signed URL (include correct extension) -----
+    # Prefer deriving from the URL so we handle versioned paths.
+    path = urlparse(letter.pdf.url).path  # e.g. '/<cloud>/raw/upload/v1/media/letters/pdf/foo.pdf'
     try:
-        after_upload = path.split('/upload/')[1]                 # 'v1/media/letters/pdf/foo.pdf'
-    except IndexError:
-        # Fallback: derive from stored name
-        public_id = os.path.splitext(letter.pdf.name)[0]
-    else:
+        after_upload = path.split('/upload/')[1]    # 'v1/media/letters/pdf/foo.pdf'
         parts = after_upload.split('/')
         if parts and parts[0].startswith('v') and parts[0][1:].isdigit():
-            parts = parts[1:]                                    # drop 'v123' if present
-        public_id_with_ext = '/'.join(parts)                     # 'media/letters/pdf/foo.pdf'
-        public_id = os.path.splitext(public_id_with_ext)[0]      # 'media/letters/pdf/foo'
+            parts = parts[1:]
+        public_id_with_ext = '/'.join(parts)        # 'media/letters/pdf/foo.pdf'
+    except Exception:
+        public_id_with_ext = letter.pdf.name        # fallback from storage
+
+    public_id_no_ext, ext_with_dot = os.path.splitext(public_id_with_ext)
+    ext = ext_with_dot.lstrip('.') or 'pdf'         # ensure we end with .pdf
 
     signed_url, _ = cloudinary_url(
-        public_id,
+        public_id_no_ext,
         resource_type="raw",
-        type="authenticated",          # signed delivery for protected files
+        type="authenticated",
+        format=ext,                  # <-- this adds ".pdf" to the URL
         sign_url=True,
         secure=True,
-        expires_at=int(time.time()) + 300  # 5 minutes
+        expires_at=int(time.time()) + 300,  # 5 minutes
     )
 
-    # 4) Stream bytes to the client
+    # stream to client
     r = requests.get(signed_url, stream=True, timeout=15)
     r.raise_for_status()
 
     resp = StreamingHttpResponse(
-        r.iter_content(chunk_size=8192),
+        r.iter_content(8192),
         content_type=r.headers.get('Content-Type', 'application/pdf'),
     )
-    # Preserve headers for nicer inline viewing
-    filename = os.path.basename(letter.pdf.name) or "letter.pdf"
-    resp['Content-Disposition'] = r.headers.get(
-        'Content-Disposition', f'inline; filename="{filename}"'
-    )
+    filename = os.path.basename(public_id_no_ext) + '.' + ext
+    resp['Content-Disposition'] = r.headers.get('Content-Disposition', f'inline; filename="{filename}"')
     if 'Content-Length' in r.headers:
         resp['Content-Length'] = r.headers['Content-Length']
     resp['Cache-Control'] = 'private, max-age=3600'
     return resp
+
 
 
 @login_required
