@@ -12,7 +12,9 @@ from django.core.files import File
 import mimetypes
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib import messages as dj_messages
-
+import requests
+from django.http import StreamingHttpResponse, HttpResponseNotFound, HttpResponseForbidden
+from django.views.decorators.http import require_GET
 import uuid  
 from .forms import (
     LetterForm,
@@ -27,6 +29,35 @@ from django.shortcuts import redirect
 
 LETTER_MIN_CHARS = 200
 LETTER_MAX_CHARS = 2000
+
+@login_required
+@require_GET
+def letter_pdf_proxy(request, letter_id):
+    letter = get_object_or_404(Letter, id=letter_id)
+    if letter.letter_type != 'pdf' or not letter.pdf:
+        return HttpResponseNotFound("Not a PDF")
+
+    # ✅ authorize: owner OR active match partner may view
+    me: Profile = request.user.profile
+    owner: Profile = letter.profile
+    is_owner = (me.id == owner.id)
+    is_active_match = Match.objects.filter(active=True).filter(
+        Q(user1__in=[me, owner], user2__in=[me, owner])
+    ).exists()
+
+    if not (is_owner or is_active_match):
+        return HttpResponseForbidden("Not allowed")
+
+    r = requests.get(letter.pdf.url, stream=True, timeout=15)
+    r.raise_for_status()
+
+    ct = r.headers.get('Content-Type', 'application/pdf')
+    disp = r.headers.get('Content-Disposition', f'inline; filename="{os.path.basename(letter.pdf.name)}"')
+
+    resp = StreamingHttpResponse(r.iter_content(8192), content_type=ct)
+    resp['Content-Disposition'] = disp
+    resp['Cache-Control'] = 'private, max-age=3600'
+    return resp
 
 @login_required
 def home_redirect(request):
