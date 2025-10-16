@@ -37,23 +37,18 @@ LETTER_MAX_CHARS = 2000
 @login_required
 @require_GET
 def letter_pdf_proxy(request, letter_id):
+    """
+    Stream a PDF letter via same-origin so pdf.js/iframe can load it.
+    Access: any logged-in user (matches how text/images are shown on your pages).
+    """
     letter = get_object_or_404(Letter, id=letter_id)
     if letter.letter_type != 'pdf' or not letter.pdf:
         return HttpResponseNotFound("Not a PDF")
 
-    me = request.user.profile
-    owner = letter.profile
-    is_owner = (me.id == owner.id)
-    is_active_match = Match.objects.filter(active=True).filter(
-        Q(user1__in=[me, owner], user2__in=[me, owner])
-    ).exists()
-    if not (is_owner or is_active_match):
-        return HttpResponseForbidden("Not allowed")
-
-    # ✅ Use the stored name EXACTLY (keeps folders like 'v1/media/.../file.pdf')
+    # Use the stored file name exactly (Cloudinary Raw keeps extension in the public_id)
     public_id_with_ext = (getattr(letter.pdf, "name", "") or "").lstrip("/")
     if not public_id_with_ext:
-        # fallback if storage didn’t set .name for some reason
+        # fallback if storage didn't set .name
         path = urlparse(letter.pdf.url).path
         try:
             public_id_with_ext = path.split("/upload/", 1)[1].lstrip("/")
@@ -61,7 +56,6 @@ def letter_pdf_proxy(request, letter_id):
             return HttpResponseNotFound("PDF path not recognized")
 
     def signed_url(delivery_type: str) -> str:
-        # For RAW resources, the extension stays in the public_id — don’t pass format=
         params = dict(
             resource_type="raw",
             type=delivery_type,
@@ -74,10 +68,11 @@ def letter_pdf_proxy(request, letter_id):
         return url
 
     last = None
-    # Try the way it was uploaded first; fall back to others
     for t in ("upload", "authenticated", "private"):
-        url = signed_url(t)
-        r = requests.get(url, stream=True, timeout=15)
+        try:
+            r = requests.get(signed_url(t), stream=True, timeout=15)
+        except requests.RequestException:
+            continue
         last = r
         if r.status_code == 200:
             resp = StreamingHttpResponse(
