@@ -39,7 +39,8 @@ def letter_pdf_proxy(request, letter_id):
     """
     Same-origin streamer for Cloudinary RAW PDFs.
     - Any logged-in user
-    - Tries multiple public_id variants (with/without 'media/') and delivery types
+    - Tries multiple public_id variants (stored, url-derived, filename-based)
+    - Auto-fixes letter.pdf.name when a working public_id is found
     - Returns 404 cleanly if missing
     - If ?debug=1, returns JSON of what was tried (no file stream)
     """
@@ -47,39 +48,61 @@ def letter_pdf_proxy(request, letter_id):
     if letter.letter_type != 'pdf' or not letter.pdf:
         return HttpResponseNotFound("Not a PDF")
 
-    attempts = []  # collect diagnostics for optional debug JSON
+    attempts = []  # diagnostics if debug=1
+    debug_mode = request.GET.get("debug") == "1"
+
+    # --- Collect base info ---
+    storage_name = (getattr(letter.pdf, "name", "") or "").lstrip("/")  # what DB currently stores
+    url_path = None
+    url_public_id = None
+    try:
+        url_path = urlparse(letter.pdf.url).path  # /.../raw/<type>/.../vNNN/<public_id.ext>
+        if "/v" in url_path:
+            url_public_id = url_path.split("/v", 1)[1].split("/", 1)[1].lstrip("/")
+    except Exception:
+        pass
 
     # --- Build candidate public_ids (MUST include extension for raw) ---
     candidates = []
-    storage_name = (getattr(letter.pdf, "name", "") or "").lstrip("/")
-    if storage_name:
-        candidates.append(storage_name)
-        if storage_name.startswith("media/"):
-            candidates.append(storage_name[len("media/"):])
+    seen = set()
 
-    # also derive from the URL after /v<version>/
-    try:
-        path = urlparse(letter.pdf.url).path  # /.../raw/<type>/.../vXYZ/<public_id_with_ext>
-        if "/v" in path:
-            after_v = path.split("/v", 1)[1]
-            public_id_from_url = after_v.split("/", 1)[1].lstrip("/")
-            if public_id_from_url and public_id_from_url not in candidates:
-                candidates.append(public_id_from_url)
-            if public_id_from_url.startswith("media/"):
-                p2 = public_id_from_url[len("media/"):]
-                if p2 not in candidates:
-                    candidates.append(p2)
-    except Exception:
-        pass
+    def push(pid):
+        if not pid:
+            return
+        pid = pid.lstrip("/")
+        if pid not in seen:
+            candidates.append(pid)
+            seen.add(pid)
+
+    # 1) As stored
+    push(storage_name)
+    if storage_name.startswith("media/"):
+        push(storage_name[len("media/"):])
+
+    # 2) From URL
+    push(url_public_id)
+    if (url_public_id or "").startswith("media/"):
+        push(url_public_id[len("media/"):])
+
+    # 3) Filename-based fallbacks (handles renamed foldering)
+    #    e.g. file = test_gzjipw.pdf  → try common folders
+    basename = os.path.basename(storage_name or url_public_id or "")
+    if basename:
+        push(f"pdf/{basename}")
+        push(f"letters/pdf/{basename}")
+        push(f"media/letters/pdf/{basename}")
+        push(f"media/pdf/{basename}")
+        # a bare fallback (rare, but cheap to try)
+        push(basename)
 
     if not candidates:
         return HttpResponseNotFound("PDF path not recognized")
 
-    # Try common delivery types for RAW: upload (public), authenticated, private
+    # Try common delivery types for RAW: authenticated/private/upload
     delivery_types = ("authenticated", "private", "upload")
 
-    # If debug, only HEAD the URLs (faster)
-    debug_mode = request.GET.get("debug") == "1"
+    working_public_id = None
+    working_resp = None
 
     for public_id in candidates:
         for t in delivery_types:
@@ -100,49 +123,68 @@ def letter_pdf_proxy(request, letter_id):
 
                 r = requests.get(url, stream=True, timeout=15)
                 attempts.append({"public_id": public_id, "type": t, "url": url, "status": r.status_code})
-
             except requests.RequestException as e:
                 attempts.append({"public_id": public_id, "type": t, "url": url, "status": f"EXC:{e.__class__.__name__}"})
                 continue
 
             if not debug_mode and r.status_code == 200:
-                resp = StreamingHttpResponse(
-                    r.iter_content(8192),
-                    content_type=r.headers.get("Content-Type", "application/pdf"),
-                )
-                fname = os.path.basename(public_id)
-                resp["Content-Disposition"] = r.headers.get(
-                    "Content-Disposition", f'inline; filename=\"{fname}\"'
-                )
-                if "Content-Length" in r.headers:
-                    resp["Content-Length"] = r.headers["Content-Length"]
-                resp["Cache-Control"] = "private, max-age=3600"
-                # log a success line to Render logs too
-                print("[PDF PROXY OK]", attempts[-1])
-                return resp
-            # else try next variant
+                working_public_id = public_id
+                working_resp = r
+                break  # stop trying delivery types
+        if working_public_id:
+            break  # stop trying other candidates
 
-    # If debug requested, show everything tried
+    # If debug requested, return the trace
     if debug_mode:
         from django.http import JsonResponse
-        base = {
+        return JsonResponse({
             "letter_id": letter_id,
             "stored_name": storage_name,
-            "url_path": urlparse(letter.pdf.url).path if getattr(letter.pdf, "url", None) else None,
+            "url_path": url_path,
             "attempts": attempts,
-        }
-        return JsonResponse(base, status=404)
+            "picked": working_public_id or None,
+        }, status=200 if working_public_id else 404)
 
-    # Log failures to Render logs so you can read without debug
-    print("[PDF PROXY MISS]", {
-        "letter_id": letter_id,
-        "stored_name": storage_name,
-        "url_path": urlparse(letter.pdf.url).path if getattr(letter.pdf, "url", None) else None,
-        "attempts": attempts[:6],  # first few
-        "total_attempts": len(attempts),
-    })
+    # If nothing worked
+    if not working_public_id or not working_resp:
+        print("[PDF PROXY MISS]", {
+            "letter_id": letter_id,
+            "stored_name": storage_name,
+            "url_path": url_path,
+            "basename": basename,
+            "tried": len(attempts),
+        })
+        return HttpResponseNotFound("PDF not found")
 
-    return HttpResponseNotFound("PDF not found")
+    # Auto-fix the DB so future loads use the correct public_id
+    if storage_name and storage_name != working_public_id:
+        try:
+            letter.pdf.name = working_public_id
+            # save without touching other fields; storage backend will accept this name as-is
+            letter.save(update_fields=[])
+            print("[PDF PROXY FIXED NAME]", {
+                "letter_id": letter_id,
+                "old": storage_name,
+                "new": working_public_id
+            })
+        except Exception as e:
+            print("[PDF PROXY FIX-ERROR]", {"letter_id": letter_id, "err": repr(e)})
+
+    # Stream the PDF
+    resp = StreamingHttpResponse(
+        working_resp.iter_content(8192),
+        content_type=working_resp.headers.get("Content-Type", "application/pdf"),
+    )
+    fname = os.path.basename(working_public_id)
+    resp["Content-Disposition"] = working_resp.headers.get(
+        "Content-Disposition", f'inline; filename="{fname}"'
+    )
+    if "Content-Length" in working_resp.headers:
+        resp["Content-Length"] = working_resp.headers["Content-Length"]
+    resp["Cache-Control"] = "private, max-age=3600"
+
+    print("[PDF PROXY OK]", {"letter_id": letter_id, "public_id": working_public_id})
+    return resp
 
 
 @login_required
