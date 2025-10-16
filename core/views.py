@@ -38,29 +38,29 @@ LETTER_MAX_CHARS = 2000
 def letter_pdf_proxy(request, letter_id):
     """
     Stream a PDF via same-origin so pdf.js/iframe can load it.
-    - Allows any logged-in user.
-    - Tries several public_id shapes and delivery types.
-    - Returns clean 404 instead of raising on Cloudinary errors.
+    - Any logged-in user.
+    - Tries multiple likely public_id variants and delivery types.
+    - Returns a clean 404 if the asset is missing (no crash).
     """
     letter = get_object_or_404(Letter, id=letter_id)
     if letter.letter_type != 'pdf' or not letter.pdf:
         return HttpResponseNotFound("Not a PDF")
 
-    # --- Build candidate public_ids (WITH extension) ---
+    # --- Build candidate public_ids (WITH extension, required for raw) ---
     candidates = []
-    # 1) what storage reports
     storage_name = (getattr(letter.pdf, "name", "") or "").lstrip("/")
     if storage_name:
         candidates.append(storage_name)
         if storage_name.startswith("media/"):
-            candidates.append(storage_name[len("media/"):])  # try without 'media/'
+            candidates.append(storage_name[len("media/"):])
 
-    # 2) derive from the URL (works for upload/authenticated/private)
+    # Derive from the URL after the version segment
     try:
-        path = urlparse(letter.pdf.url).path  # /.../raw/<type>/.../vNNN/<public_id_with_ext>
+        path = urlparse(letter.pdf.url).path  # /.../raw/<type>/.../vXYZ/<public_id_with_ext>
         if "/v" in path:
-            after_v = path.split("/v", 1)[1]
-            public_id_from_url = after_v.split("/", 1)[1].lstrip("/")
+            after_v = path.split("/v", 1)[1]                # e.g. 172xxx/media/letters/pdf/file.pdf
+            public_id_from_url = after_v.split("/", 1)[1]   # e.g. media/letters/pdf/file.pdf
+            public_id_from_url = public_id_from_url.lstrip("/")
             if public_id_from_url and public_id_from_url not in candidates:
                 candidates.append(public_id_from_url)
             if public_id_from_url.startswith("media/"):
@@ -73,7 +73,7 @@ def letter_pdf_proxy(request, letter_id):
     if not candidates:
         return HttpResponseNotFound("PDF path not recognized")
 
-    # --- Try common delivery types for RAW files ---
+    # --- Try delivery types commonly used for Raw files ---
     delivery_types = ("authenticated", "private", "upload")
 
     for public_id in candidates:
@@ -81,7 +81,7 @@ def letter_pdf_proxy(request, letter_id):
             try:
                 params = dict(resource_type="raw", type=t, sign_url=True, secure=True)
                 if t in ("authenticated", "private"):
-                    params["expires_at"] = int(time.time()) + 300  # 5 minutes
+                    params["expires_at"] = int(time.time()) + 300  # 5 min
                 url, _ = cloudinary_url(public_id, **params)
                 r = requests.get(url, stream=True, timeout=15)
             except requests.RequestException:
@@ -100,9 +100,10 @@ def letter_pdf_proxy(request, letter_id):
                     resp["Content-Length"] = r.headers["Content-Length"]
                 resp["Cache-Control"] = "private, max-age=3600"
                 return resp
-            # else try next combo
 
-    # Nothing worked — don’t crash, just 404
+            # otherwise try next variant
+            continue
+
     return HttpResponseNotFound("PDF not found")
 
 
