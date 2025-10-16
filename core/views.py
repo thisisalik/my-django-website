@@ -36,56 +36,74 @@ LETTER_MAX_CHARS = 2000
 @login_required
 @require_GET
 def letter_pdf_proxy(request, letter_id):
-    """Stream a PDF letter from Cloudinary via same-origin so pdf.js/iframe can load it.
-    Access: any logged-in user (same visibility as text/image letters)."""
+    """
+    Stream a PDF via same-origin so pdf.js/iframe can load it.
+    - Any logged-in user.
+    - Tries multiple likely public_id variants and delivery types.
+    - Returns a clean 404 if the asset is missing (no crash).
+    """
     letter = get_object_or_404(Letter, id=letter_id)
     if letter.letter_type != 'pdf' or not letter.pdf:
         return HttpResponseNotFound("Not a PDF")
 
-    # Use stored name to preserve foldering (e.g. media/letters/pdf/file.pdf)
-    public_id_with_ext = (getattr(letter.pdf, "name", "") or "").lstrip("/")
-    if not public_id_with_ext:
-        path = urlparse(letter.pdf.url).path
-        try:
-            public_id_with_ext = path.split("/upload/", 1)[1].lstrip("/")
-        except Exception:
-            return HttpResponseNotFound("PDF path not recognized")
+    # --- Build candidate public_ids (WITH extension, required for raw) ---
+    candidates = []
+    storage_name = (getattr(letter.pdf, "name", "") or "").lstrip("/")
+    if storage_name:
+        candidates.append(storage_name)
+        if storage_name.startswith("media/"):
+            candidates.append(storage_name[len("media/"):])
 
-    def signed_url(delivery_type: str) -> str:
-        params = dict(
-            resource_type="raw",
-            type=delivery_type,
-            sign_url=True,
-            secure=True,
-        )
-        if delivery_type in ("authenticated", "private"):
-            params["expires_at"] = int(time.time()) + 300  # valid for 5 min
-        url, _ = cloudinary_url(public_id_with_ext, **params)
-        return url
+    # Derive from the URL after the version segment
+    try:
+        path = urlparse(letter.pdf.url).path  # /.../raw/<type>/.../vXYZ/<public_id_with_ext>
+        if "/v" in path:
+            after_v = path.split("/v", 1)[1]                # e.g. 172xxx/media/letters/pdf/file.pdf
+            public_id_from_url = after_v.split("/", 1)[1]   # e.g. media/letters/pdf/file.pdf
+            public_id_from_url = public_id_from_url.lstrip("/")
+            if public_id_from_url and public_id_from_url not in candidates:
+                candidates.append(public_id_from_url)
+            if public_id_from_url.startswith("media/"):
+                p2 = public_id_from_url[len("media/"):]
+                if p2 not in candidates:
+                    candidates.append(p2)
+    except Exception:
+        pass
 
-    # Try several delivery types, most common first
-    for t in ("upload", "authenticated", "private"):
-        try:
-            r = requests.get(signed_url(t), stream=True, timeout=15)
-        except requests.RequestException:
+    if not candidates:
+        return HttpResponseNotFound("PDF path not recognized")
+
+    # --- Try delivery types commonly used for Raw files ---
+    delivery_types = ("authenticated", "private", "upload")
+
+    for public_id in candidates:
+        for t in delivery_types:
+            try:
+                params = dict(resource_type="raw", type=t, sign_url=True, secure=True)
+                if t in ("authenticated", "private"):
+                    params["expires_at"] = int(time.time()) + 300  # 5 min
+                url, _ = cloudinary_url(public_id, **params)
+                r = requests.get(url, stream=True, timeout=15)
+            except requests.RequestException:
+                continue
+
+            if r.status_code == 200:
+                resp = StreamingHttpResponse(
+                    r.iter_content(8192),
+                    content_type=r.headers.get("Content-Type", "application/pdf"),
+                )
+                fname = os.path.basename(public_id)
+                resp["Content-Disposition"] = r.headers.get(
+                    "Content-Disposition", f'inline; filename="{fname}"'
+                )
+                if "Content-Length" in r.headers:
+                    resp["Content-Length"] = r.headers["Content-Length"]
+                resp["Cache-Control"] = "private, max-age=3600"
+                return resp
+
+            # otherwise try next variant
             continue
-        if r.status_code == 200:
-            resp = StreamingHttpResponse(
-                r.iter_content(8192),
-                content_type=r.headers.get("Content-Type", "application/pdf"),
-            )
-            fname = os.path.basename(public_id_with_ext)
-            resp["Content-Disposition"] = r.headers.get(
-                "Content-Disposition", f'inline; filename="{fname}"'
-            )
-            if "Content-Length" in r.headers:
-                resp["Content-Length"] = r.headers["Content-Length"]
-            resp["Cache-Control"] = "private, max-age=3600"
-            return resp
-        # just skip if not found or forbidden
-        continue
 
-    # If all attempts failed, return a clean 404 instead of raising
     return HttpResponseNotFound("PDF not found")
 
 
