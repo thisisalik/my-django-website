@@ -38,61 +38,100 @@ LETTER_MAX_CHARS = 2000
 @require_GET
 def letter_pdf_proxy(request, letter_id):
     """
-    Stream a PDF letter via same-origin so pdf.js/iframe can load it.
-    Access: any logged-in user (matches how text/images are shown on your pages).
+    Stream a PDF via same-origin so pdf.js/iframe can load it.
+    - Allows any logged-in user (same as how text/images are viewable on your pages).
+    - Tries multiple public_id variants to survive folder/prefix differences.
+    - Never raises HTTPError to the user; returns 404 cleanly instead.
     """
     letter = get_object_or_404(Letter, id=letter_id)
     if letter.letter_type != 'pdf' or not letter.pdf:
         return HttpResponseNotFound("Not a PDF")
 
-    # Use the stored file name exactly (Cloudinary Raw keeps extension in the public_id)
-    public_id_with_ext = (getattr(letter.pdf, "name", "") or "").lstrip("/")
-    if not public_id_with_ext:
-        # fallback if storage didn't set .name
-        path = urlparse(letter.pdf.url).path
-        try:
-            public_id_with_ext = path.split("/upload/", 1)[1].lstrip("/")
-        except Exception:
-            return HttpResponseNotFound("PDF path not recognized")
+    # 1) Collect candidate public_ids (WITH extension for raw files)
+    candidates = []
 
-    def signed_url(delivery_type: str) -> str:
-        params = dict(
-            resource_type="raw",
-            type=delivery_type,
-            sign_url=True,
-            secure=True,
-        )
-        if delivery_type in ("authenticated", "private"):
-            params["expires_at"] = int(time.time()) + 300  # 5 minutes
-        url, _ = cloudinary_url(public_id_with_ext, **params)
-        return url
+    # a) What Django storage reports
+    storage_name = (getattr(letter.pdf, "name", "") or "").lstrip("/")
+    if storage_name:
+        candidates.append(storage_name)
+        # Sometimes Cloudinary public_id doesn’t have a leading 'media/' even if Django name does.
+        if storage_name.startswith("media/"):
+            candidates.append(storage_name[len("media/"):])
 
-    last = None
-    for t in ("upload", "authenticated", "private"):
-        try:
-            r = requests.get(signed_url(t), stream=True, timeout=15)
-        except requests.RequestException:
+    # b) Derive from the URL path if we can (works for upload/authenticated/private)
+    try:
+        path = urlparse(letter.pdf.url).path  # e.g. /.../raw/private/.../vXXX/<public_id_with_ext>
+        # split on version segment and take the part after it
+        if "/v" in path:
+            after_v = path.split("/v", 1)[1]           # e.g. 1699999999/media/letters/pdf/file.pdf
+            public_id_from_url = after_v.split("/", 1)[1]  # e.g. media/letters/pdf/file.pdf
+            public_id_from_url = public_id_from_url.lstrip("/")
+            if public_id_from_url and public_id_from_url not in candidates:
+                candidates.append(public_id_from_url)
+            if public_id_from_url.startswith("media/"):
+                p2 = public_id_from_url[len("media/"):]
+                if p2 not in candidates:
+                    candidates.append(p2)
+    except Exception:
+        pass
+
+    if not candidates:
+        return HttpResponseNotFound("PDF path not recognized")
+
+    # 2) Try to sign & stream using different delivery types in order of likelihood
+    delivery_types = ("authenticated", "private", "upload")  # most raw files are authenticated/private
+
+    last_status = None
+    last_err_text = None
+
+    for public_id in candidates:
+        for t in delivery_types:
+            try:
+                params = dict(
+                    resource_type="raw",
+                    type=t,
+                    sign_url=True,
+                    secure=True,
+                )
+                if t in ("authenticated", "private"):
+                    params["expires_at"] = int(time.time()) + 300  # 5 min
+                url, _ = cloudinary_url(public_id, **params)
+                r = requests.get(url, stream=True, timeout=15)
+            except requests.RequestException as e:
+                last_status = f"request-exception: {e.__class__.__name__}"
+                continue
+
+            if r.status_code == 200:
+                resp = StreamingHttpResponse(
+                    r.iter_content(8192),
+                    content_type=r.headers.get("Content-Type", "application/pdf"),
+                )
+                fname = os.path.basename(public_id)
+                resp["Content-Disposition"] = r.headers.get(
+                    "Content-Disposition", f'inline; filename="{fname}"'
+                )
+                if "Content-Length" in r.headers:
+                    resp["Content-Length"] = r.headers["Content-Length"]
+                resp["Cache-Control"] = "private, max-age=3600"
+                return resp
+
+            # remember last non-200 in case we need to explain
+            last_status = r.status_code
+            try:
+                last_err_text = r.text[:200]
+            except Exception:
+                last_err_text = None
+
+            # keep trying other delivery types / candidates
             continue
-        last = r
-        if r.status_code == 200:
-            resp = StreamingHttpResponse(
-                r.iter_content(8192),
-                content_type=r.headers.get("Content-Type", "application/pdf"),
-            )
-            fname = os.path.basename(public_id_with_ext)
-            resp["Content-Disposition"] = r.headers.get(
-                "Content-Disposition", f'inline; filename="{fname}"'
-            )
-            if "Content-Length" in r.headers:
-                resp["Content-Length"] = r.headers["Content-Length"]
-            resp["Cache-Control"] = "private, max-age=3600"
-            return resp
-        if r.status_code not in (401, 403, 404):
-            r.raise_for_status()
 
-    if last is not None:
-        last.raise_for_status()
-    return HttpResponseNotFound("PDF not found")
+    # 3) Clean 404 instead of raising
+    if last_status in (401, 403, 404, "request-exception"):
+        return HttpResponseNotFound("PDF not found (might have been removed).")
+
+    # Unknown error class — still avoid stack trace
+    return HttpResponseNotFound("PDF could not be retrieved.")
+
 @login_required
 def home_redirect(request):
     return redirect('browse_letter') 
