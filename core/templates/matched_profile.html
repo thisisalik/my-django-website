@@ -45,9 +45,7 @@
     border-radius: 6px;
     cursor: pointer;
   }
-  .btn-unmatch:hover {
-    background: #fff5f5;
-  }
+  .btn-unmatch:hover { background: #fff5f5; }
 
   .letter-card {
     border: 1px solid #ddd;
@@ -97,7 +95,7 @@
 
 <p>Age: {{ profile.age }}</p>
 <p>Gender: {{ profile.gender }}</p>
-<p>City: {{ profile.location }}</p> 
+<p>City: {{ profile.location }}</p>
 <p>Letter:</p>
 
 {% if letter.letter_type == "text" %}
@@ -111,7 +109,6 @@
     <div class="letter-card"><em>No text available.</em></div>
   {% endif %}
 
-{# PDF (same pdf.js UI, but via same-origin proxy) #}
 {% elif letter.letter_type == "pdf" and letter.pdf %}
   {% with gid="p"|add:letter.id|stringformat:"s" %}
     <style>
@@ -123,6 +120,7 @@
       .pdf-canvas-wrap { width:100%;max-height:40vh;overflow:auto;border-radius:8px;background:#fafafa;display:flex;justify-content:center;align-items:flex-start; }
       .pdf-canvas-wrap::-webkit-scrollbar { height:8px;width:8px; }
       .pdf-canvas-wrap::-webkit-scrollbar-thumb { background:#d0d0d0;border-radius:8px; }
+      canvas { display:block; max-width:100%; height:auto; }
     </style>
 
     <div class="pdf-card" id="pdfCard-{{ gid }}">
@@ -156,6 +154,7 @@
         document.head.appendChild(s);
       })();
     </script>
+
     <script>
       (function initPDF{{ gid }}() {
         const url        = "{% url 'letter_pdf_proxy' letter.id %}";
@@ -171,8 +170,6 @@
         const dpr        = window.devicePixelRatio || 1;
 
         const fallbackFrame = document.getElementById('pdfFrame-{{ gid }}');
-        let rendered = false;
-
         let pdfDoc=null, pageNum=1, pageCount=1, baseScale=1, scale=1, rendering=false;
 
         function updateLabels(){
@@ -204,8 +201,12 @@
             const transform = dpr!==1 ? [dpr,0,0,dpr,0,0] : null;
 
             page.render({ canvasContext: ctx, viewport, transform }).promise
-              .then(function(){ rendered = true; })
-              .finally(function(){ rendering=false; updateLabels(); });
+              .then(function(){
+                if (fallbackFrame) fallbackFrame.style.display = 'none'; // hide iframe when canvas renders
+              })
+              .finally(function(){
+                rendering=false; updateLabels();
+              });
           });
         }
 
@@ -213,13 +214,18 @@
           pdfjsLib.getDocument(url).promise.then(doc=>{
             pdfDoc = doc; pageCount = doc.numPages; pageNum = 1;
             renderPage();
-          }).catch(function(){
-            if (fallbackFrame) fallbackFrame.style.display = 'block';
-          });
 
-          setTimeout(function(){
-            if (!rendered && fallbackFrame) fallbackFrame.style.display = 'block';
-          }, 1200);
+            // re-fit on container resize
+            const card = document.getElementById('pdfCard-{{ gid }}');
+            if ('ResizeObserver' in window){
+              const ro = new ResizeObserver(()=>{ baseScale=1; renderPage(); });
+              ro.observe(card);
+            } else {
+              window.addEventListener('resize', ()=>{ baseScale=1; renderPage(); });
+            }
+          }).catch(function(){
+            if (fallbackFrame) fallbackFrame.style.display = 'block'; // show iframe only on real failure
+          });
         }
 
         function setWorker(){
@@ -243,7 +249,6 @@
     </script>
   {% endwith %}
 
-{# IMAGES #}
 {% else %}
   {% if letter.letter_type == 'image' and letter.images.exists %}
     <div style="position: relative; max-width: 400px; margin-top: 10px;">
@@ -308,7 +313,6 @@
     <div class="letter-card"><em>No letter available.</em></div>
   {% endif %}
 {% endif %}
-
 
 <!-- Start Chat button -->
 <a href="{% url 'message_view' profile.id %}" class="btn btn-chat">💬 Start Chat</a>

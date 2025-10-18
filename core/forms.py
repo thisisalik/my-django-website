@@ -8,6 +8,8 @@ import os
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.forms.widgets import ClearableFileInput
+from django.contrib.auth.password_validation import password_validators_help_text_html
+
 LETTER_MIN_CHARS = 200
 LETTER_MAX_CHARS = 2000
 
@@ -219,6 +221,9 @@ class FullRegisterForm(UserCreationForm):
     # NEW: conditionally relax the HTML/browser "required" only when a temp picture exists
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["password1"].help_text = password_validators_help_text_html()
+        self.fields["password2"].help_text = "Enter the same password as before, for verification."
+
         temp_path = (self.data.get("temp_profile_picture") or "").strip() if hasattr(self, "data") else ""
         if temp_path:
             # don’t force the browser to re-upload; server will validate presence via temp
