@@ -3,45 +3,50 @@
 
 {% block content %}
 <style>
-  /* Hide navbar/header only on login page */
+  /* hide navbar/header only on login page */
   nav, .navbar, header { display: none !important; }
 
-  /* Prevent horizontal overflow on small screens */
-  html, body { overflow-x: hidden; }
+  /* prevent side scroll + odd scaling on iOS */
+  html, body { overflow-x: hidden; -webkit-text-size-adjust: 100%; }
 
+  /* page wrapper to give consistent padding like register page */
+  .auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 16px 0;            /* top/bottom spacing; horizontal is handled by container */
+    box-sizing: border-box;
+  }
+
+  /* MATCH REGISTER PAGE WIDTH:
+     - on mobile: nearly full width with ~16px side gutters
+     - on desktop: cap around 680px like your register form feels */
   .auth-container {
-    max-width: 420px;
-    width: min(92vw, 420px);
-    margin: 60px auto;
-    padding: 24px;
+    width: calc(100vw - 32px);  /* 16px gutter left/right on phones */
+    max-width: 680px;           /* wider than before (was 420px) */
+    margin: 0 auto;
+    padding: 20px;
     background: #fff;
     border: 1px solid #eee;
     border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    box-sizing: border-box;
   }
 
-  h2 {
-    text-align: center;
-    margin-bottom: 20px;
-  }
+  h2 { text-align: center; margin: 0 0 16px; }
 
-  form p {
-    margin-bottom: 16px;
-  }
+  form p { margin-bottom: 14px; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
 
-  label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 6px;
-  }
-
+  /* keep inputs at 16px to avoid iOS auto-zoom */
   input[type="text"],
   input[type="email"],
   input[type="password"] {
     width: 100%;
     padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
+    border: 1px solid #cfd8e3;
+    border-radius: 10px;
     font-size: 16px;
     box-sizing: border-box;
   }
@@ -53,80 +58,58 @@
     color: #fff;
     font-weight: 600;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background .2s ease;
   }
+  button:hover { background-color: #1765cc; }
 
-  button:hover {
-    background-color: #1765cc;
-  }
+  .err { color:#b00020; margin-top:6px; }
 
-  .err {
-    color: #b00020;
-    margin-top: 4px;
-  }
+  .extra-links { text-align: center; margin-top: 14px; }
+  .extra-links a { color:#1a73e8; text-decoration: none; }
+  .extra-links a:hover { text-decoration: underline; }
 
-  a {
-    color: #1a73e8;
-    text-decoration: none;
-  }
-
-  a:hover {
-    text-decoration: underline;
-  }
-
-  .extra-links {
-    text-align: center;
-    margin-top: 16px;
-  }
-
-  /* Tighten edges for smaller devices */
-  @media (max-width: 480px) {
-    .auth-container {
-      width: calc(100vw - 32px);
-      margin: 20px auto;
-      padding: 20px;
-    }
+  /* small phones: a touch more padding breathing room */
+  @media (max-width: 420px) {
+    .auth-container { padding: 16px; }
   }
 </style>
 
-<div class="auth-container">
-  <h2>Login</h2>
+<div class="auth-page">
+  <div class="auth-container">
+    <h2>Login</h2>
 
-  <form method="post" novalidate>
-    {% csrf_token %}
+    <form method="post" novalidate>
+      {% csrf_token %}
 
-    {% if form.non_field_errors %}
-      <div class="err">{{ form.non_field_errors }}</div>
-    {% endif %}
+      {% if form.non_field_errors %}
+        <div class="err">{{ form.non_field_errors }}</div>
+      {% endif %}
 
-    <p>
-      <label for="{{ form.username.id_for_label }}">Email</label>
-      {{ form.username }}
-      {% for e in form.username.errors %}
-        <div class="err">{{ e }}</div>
-      {% endfor %}
-    </p>
+      <p>
+        <label for="{{ form.username.id_for_label }}">Email</label>
+        {{ form.username }}
+        {% for e in form.username.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </p>
 
-    <p>
-      {{ form.password.label_tag }}
-      {{ form.password }}
-      {% for e in form.password.errors %}
-        <div class="err">{{ e }}</div>
-      {% endfor %}
-    </p>
+      <p>
+        {{ form.password.label_tag }}
+        {{ form.password }}
+        {% for e in form.password.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </p>
 
-    <p>
-      <label><input type="checkbox" name="remember_me" checked> Remember me</label>
-    </p>
+      <p>
+        <label><input type="checkbox" name="remember_me" checked> Remember me</label>
+      </p>
 
-    <button type="submit">Login</button>
-  </form>
+      <button type="submit">Login</button>
+    </form>
 
-  <div class="extra-links">
-    <a href="{% url 'password_reset' %}">Forgot your password?</a>
-    <p>Don't have an account? <a href="{% url 'register' %}">Register here</a></p>
+    <div class="extra-links">
+      <a href="{% url 'password_reset' %}">Forgot your password?</a>
+      <p>Don't have an account? <a href="{% url 'register' %}">Register here</a></p>
+    </div>
   </div>
 </div>
 {% endblock %}
