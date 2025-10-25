@@ -187,9 +187,10 @@ def letter_pdf_proxy(request, letter_id):
     return resp
 
 
-@login_required
 def home_redirect(request):
-    return redirect('browse_letter') 
+    if request.user.is_authenticated:
+        return redirect('browse_letter')   # same as before for signed-in users
+    return redirect('register')            # send guests to the register page 
 @login_required
 def live_notifications(request):
     profile = request.user.profile
