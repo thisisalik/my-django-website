@@ -57,6 +57,7 @@
     </div>
     
   </p>
+  <div id="pwd_rules" class="pwd-help" style="margin-top:6px;"></div>
 
   <p>
     <label for="id_password2">Confirm Password:</label> {{ form.password2 }}
@@ -298,6 +299,39 @@
       if (pwd2 && !pwd2.nextElementSibling) {
         pwd2.parentNode.appendChild(pwdError);
       }
+
+      // === NEW: password policy checks & live UI ===
+      function passwordIssues(p) {
+        const issues = [];
+        if (!p || p.length < 8) issues.push("at least 8 characters");
+        if (!/[a-z]/.test(p)) issues.push("a lowercase letter");
+        if (!/[A-Z]/.test(p)) issues.push("an uppercase letter");
+        if (!/\d/.test(p)) issues.push("a number");
+        if (!/[^A-Za-z0-9]/.test(p)) issues.push("a special character");
+        return issues;
+      }
+
+      function updatePasswordUI() {
+        const rulesEl = document.getElementById('pwd_rules');
+        if (!rulesEl || !pwd1) return;
+
+        const value = pwd1.value || "";
+        const issues = passwordIssues(value);
+
+        if (!value) {
+          rulesEl.textContent = "";
+          return;
+        }
+
+        if (issues.length) {
+          rulesEl.innerHTML = `❌ Password needs ${issues.map(i => `<strong>${i}</strong>`).join(", ")}.`;
+          rulesEl.style.color = '#b00020';
+        } else {
+          rulesEl.textContent = "✅ Looks good.";
+          rulesEl.style.color = '#2e7d32';
+        }
+      }
+      // === END NEW ===
     
       function connectionTypesOk() {
         return document.querySelectorAll("input[name='connection_types']:checked").length > 0;
@@ -333,7 +367,11 @@
         const connOk = connectionTypesOk();
         const letterOk = letterValid();
         const pwdOk = passwordsMatch();
-        return cityOk && agreeOk && connOk && letterOk && pwdOk;
+
+        // NEW: also require password to satisfy the policy
+        const strongEnough = pwd1 ? passwordIssues(pwd1.value || "").length === 0 : false;
+
+        return cityOk && agreeOk && connOk && letterOk && pwdOk && strongEnough;
       }
     
       function updateBtn() {
@@ -347,6 +385,9 @@
             pwdError.textContent = "";
           }
         }
+
+        // keep password UI in sync
+        updatePasswordUI();
     
         btn.disabled = !ok;
         btn.style.opacity = ok ? '' : '0.6';
@@ -365,9 +406,10 @@
         listen(pdfInput, 'change');
         listen(pwd1, 'input');
         listen(pwd2, 'input');
-        document.querySelectorAll("input[name='connection_types']").forEach(el => {
-          el.addEventListener('change', updateBtn);
-        });
+
+        // NEW: live password feedback
+        if (pwd1) pwd1.addEventListener('input', updatePasswordUI);
+        updatePasswordUI(); // initial
         updateBtn(); // initial
       });
     
