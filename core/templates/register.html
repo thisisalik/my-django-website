@@ -50,14 +50,10 @@
       <div class="err">{{ form.password1.errors.0 }}</div>
     {% endif %}
     {# Password rules/help (uses Django validators help text if present) #}
-    <div class="pwd-help">
-      Your password must be at least <strong>8 characters</strong> and include
-      a <strong>lowercase</strong> letter, an <strong>uppercase</strong> letter,
-      a <strong>number</strong>, and a <strong>special character</strong>.
-    </div>
+    
     
   </p>
-  <div id="pwd_rules" class="pwd-help" style="margin-top:6px;"></div>
+  <div id="pwd_rules" class="pwd-inline"></div>
 
   <p>
     <label for="id_password2">Confirm Password:</label> {{ form.password2 }}
