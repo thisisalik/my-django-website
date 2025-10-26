@@ -12,7 +12,7 @@
     .nav {
       display:flex; align-items:center; gap:12px;
       padding:10px 14px; background:#fff; border-bottom:1px solid #eee;
-      overflow-x:auto;                /* NEW: allow horizontal scroll on small screens */
+      overflow-x:auto;                /* allow horizontal scroll on small screens */
       -webkit-overflow-scrolling:touch;
       white-space:nowrap;
     }
@@ -41,49 +41,14 @@
     }
 
     @media (max-width:560px){
-      .nav { justify-content:flex-start; gap:10px; }   /* keep items on one row and scrollable */
+      .nav { justify-content:flex-start; gap:10px; }
       .nav-group { gap:6px; }
       .nav-item { padding:10px; }
-      /* REMOVED the rule that hid labels:
-         .nav-item .label { display:none; } */
     }
 
     .container { max-width:980px; margin:16px auto; padding:0 16px; }
   </style>
 </head>
-
-<!-- Welcome modal -->
-<div id="welcome-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index:9999;">
-  <div style="max-width: 450px; margin: 80px auto; background:white; padding: 25px; border-radius: 12px; text-align: left; font-size: 16px; line-height: 1.5;">
-    <h3 style="margin-top: 0;">👋 Welcome to Letter Connections!</h3>
-    <p style="margin:0;">
-       This space is for <em>dating</em>, <em>friendship</em>, or simply
-      <em>writing & reading letters</em>. People share a short letter about themselves—typed, a photo of a handwritten page,
-      or a PDF. You browse letters (not photos) and decide to like or skip based on what they wrote. If you both like each
-      other’s letters, you match; then you can chat and see each other’s profile photo and details. Or just enjoy exchanging
-      letters without aiming to match. Slower, more thoughtful connections.
-    </p>
-    <hr style="margin: 15px 0;">
-    <p style="font-size: 14px; color: #444;">
-      You can’t see anyone’s profile info until you match — and they can’t see yours either. Emotional connection first. ✨
-    </p>
-
-    <div style="text-align: right; margin-top: 20px;">
-      <button onclick="dismissWelcome()" style="background: #444; color: white; padding: 6px 16px; border: none; border-radius: 5px; cursor: pointer;">Got it</button>
-    </div>
-  </div>
-</div>
-
-<script>
-  function dismissWelcome() {
-    localStorage.setItem('letterdating_welcome_seen', 'true');
-    document.getElementById('welcome-modal').style.display = 'none';
-  }
-  document.addEventListener('DOMContentLoaded', function() {
-    const hasSeen = localStorage.getItem('letterdating_welcome_seen');
-    if (!hasSeen) document.getElementById('welcome-modal').style.display = 'block';
-  });
-</script>
 
 <body>
   <nav class="nav">
