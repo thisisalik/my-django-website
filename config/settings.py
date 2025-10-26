@@ -23,33 +23,40 @@ SECRET_KEY = os.getenv(
 )
 
 # --- Hosts / CSRF ---
-ALLOWED_HOSTS = (
-    os.getenv("ALLOWED_HOSTS", "").split(",")
-    if os.getenv("ALLOWED_HOSTS")
-    else []
-)
-# dev defaults so runserver keeps working locally
-for h in [".localhost", "127.0.0.1", "[::1]"]:
-    if h not in ALLOWED_HOSTS:
-        ALLOWED_HOSTS.append(h)
+ALLOWED_HOSTS = []
 
-# from env (comma-separated)
+# Local/dev
+ALLOWED_HOSTS += [".localhost", "127.0.0.1", "[::1]"]
+
+# Render service hostname (auto)
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Your custom domains
+ALLOWED_HOSTS += ["turtleapp.co", "www.turtleapp.co"]
+
+# If ALLOWED_HOSTS is also set in env, merge it
 env_hosts = os.getenv("ALLOWED_HOSTS", "")
 if env_hosts:
     ALLOWED_HOSTS += [h.strip() for h in env_hosts.split(",") if h.strip()]
 
+# De-duplicate
+ALLOWED_HOSTS = sorted(set(ALLOWED_HOSTS))
+
 CSRF_TRUSTED_ORIGINS = [
-    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+    # Render service
+    *( [f"https://{RENDER_EXTERNAL_HOSTNAME}"] if RENDER_EXTERNAL_HOSTNAME else [] ),
+    # Your custom domains
+    "https://turtleapp.co",
+    "https://www.turtleapp.co",
 ]
 
-# Add Render’s hostname automatically
-RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
-if RENDER_EXTERNAL_HOSTNAME:
-    if RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
-        ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-    origin = f"https://{RENDER_EXTERNAL_HOSTNAME}"
-    if origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(origin)
+# Merge any from env
+env_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+if env_csrf:
+    CSRF_TRUSTED_ORIGINS += [o.strip() for o in env_csrf.split(",") if o.strip()]
+CSRF_TRUSTED_ORIGINS = sorted(set(CSRF_TRUSTED_ORIGINS))
 
 # --- Apps ---
 INSTALLED_APPS = [
@@ -120,7 +127,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "core.validators.ComplexPasswordValidator"},  # ✅ no OPTIONS
 ]
 
-
 # --- I18N ---
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -132,17 +138,14 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'core/static']
 
-# Use plain StaticFilesStorage to avoid WhiteNoise pre-compress step during collectstatic
 STORAGES = {
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
     "default": {
-        # Local/dev default for MEDIA; overridden by Cloudinary below if CLOUDINARY_URL is set
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
 }
-# Back-compat for libs that still read this setting on Django 5
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 MEDIA_URL = '/media/'
@@ -154,7 +157,6 @@ if CLOUDINARY_URL:
     STORAGES["default"] = {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     }
-    # Back-compat for any code that still reads DEFAULT_FILE_STORAGE
     DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 # --- Misc ---
@@ -164,7 +166,6 @@ LOGIN_REDIRECT_URL = '/letters/'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_COOKIE_AGE = 1800  # 30 minutes
 
-# Allow embedding on the same origin so PDFs can render inline
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 if not DEBUG:
@@ -196,4 +197,5 @@ LOGGING = {
     },
 }
 
+# Render proxy SSL
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
