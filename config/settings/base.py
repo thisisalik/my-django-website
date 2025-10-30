@@ -12,12 +12,15 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 load_dotenv(BASE_DIR / ".env")
 
 # ---- Core flags & secrets (defaults are safe) ----
-DEBUG = False  # override per-env
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 SECRET_KEY = os.environ["SECRET_KEY"]  # MUST be set per env
 
 # ---- Hosts / CSRF (set per-env) ----
-ALLOWED_HOSTS: list[str] = []
-CSRF_TRUSTED_ORIGINS: list[str] = []
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+# Local dev convenience: if DEBUG is True and ALLOWED_HOSTS is empty, allow localhost.
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 # ---- Apps ----
 INSTALLED_APPS = [
