@@ -31,48 +31,6 @@ from .models import Notification
 from django.http import JsonResponse
 from django.shortcuts import redirect
 
-from django.conf import settings
-from django.contrib.admin.views.decorators import staff_member_required
-from django.core.mail import EmailMessage
-from django.http import JsonResponse
-
-def email_config_echo(request):
-    return JsonResponse({
-        "SETTINGS_MODULE": getattr(settings, "SETTINGS_MODULE", None),
-        "EMAIL_BACKEND": settings.EMAIL_BACKEND,
-        "EMAIL_HOST": settings.EMAIL_HOST,
-        "EMAIL_PORT": settings.EMAIL_PORT,
-        "EMAIL_USE_TLS": settings.EMAIL_USE_TLS,
-        "EMAIL_USE_SSL": settings.EMAIL_USE_SSL,
-        "DEFAULT_FROM_EMAIL": settings.DEFAULT_FROM_EMAIL,
-        "EMAIL_HOST_USER_tail": getattr(settings, "EMAIL_HOST_USER", "")[-16:],  # should end with '@smtp-brevo.com'
-    })
-
-from django.core.mail import EmailMessage
-from django.http import JsonResponse
-
-def email_force_send(request):
-    to = request.GET.get("to") or "you@example.com"
-    try:
-        msg = EmailMessage(
-            subject="SMTP force test",
-            body="Hello from TurtleApp via Brevo.",
-            from_email="noreply@turtleapp.co",
-            to=[to],
-        )
-        sent = msg.send(fail_silently=False)
-        return JsonResponse({"ok": True, "sent": sent, "to": to})
-    except Exception as e:
-        # Show full information so we know exactly what's wrong
-        return JsonResponse(
-            {
-                "ok": False,
-                "etype": e.__class__.__name__,
-                "error": str(e),
-            },
-            status=500,
-        )
-
 LETTER_MIN_CHARS = 200
 LETTER_MAX_CHARS = 2000
 @login_required

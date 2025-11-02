@@ -35,8 +35,6 @@ urlpatterns = [
     path('accounts/login/', CustomLoginView.as_view(), name='login'),
     path('unmatch/<int:match_id>/', views.unmatch, name='unmatch'),
     path('letter/pdf/<int:letter_id>/', views.letter_pdf_proxy, name='letter_pdf_proxy'),
-    path("debug/email-echo/", views.email_config_echo),
-    path("debug/email-send/", views.email_force_send),
 
 ]
 
