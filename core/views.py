@@ -36,7 +36,6 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.core.mail import EmailMessage
 from django.http import JsonResponse
 
-@staff_member_required
 def email_config_echo(request):
     return JsonResponse({
         "SETTINGS_MODULE": getattr(settings, "SETTINGS_MODULE", None),
@@ -49,7 +48,6 @@ def email_config_echo(request):
         "EMAIL_HOST_USER_tail": getattr(settings, "EMAIL_HOST_USER", "")[-16:],  # should end with '@smtp-brevo.com'
     })
 
-@staff_member_required
 def email_force_send(request):
     to = request.GET.get("to") or (request.user.email or "you@example.com")
     EmailMessage(
