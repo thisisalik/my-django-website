@@ -5,26 +5,26 @@ import dj_database_url
 from dotenv import load_dotenv
 
 # ---- Paths ----
-BASE_DIR = Path(__file__).resolve().parent.parent.parent   # <== 3x parent to project root
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 
-# Load optional .env for local dev
+# Load optional .env for local development
 load_dotenv(BASE_DIR / ".env")
 
-# ---- Core flags & secrets (defaults are safe) ----
+# ---- Core flags & secrets ----
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
-SECRET_KEY = os.environ["SECRET_KEY"]  # MUST be set per env
+SECRET_KEY = os.environ["SECRET_KEY"]
 
-# ---- Hosts / CSRF (set per-env) ----
+# ---- Hosts / CSRF ----
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
-# Local dev convenience: if DEBUG is True and ALLOWED_HOSTS is empty, allow localhost.
+
+# Allow localhost automatically in DEBUG mode
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 # ---- Apps ----
 INSTALLED_APPS = [
-    # django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -33,12 +33,10 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
 
-    # your app
     'core.apps.CoreConfig',
 ]
 
-# Only load Cloudinary apps if CLOUDINARY_URL is set.
-# This avoids the "ImproperlyConfigured: provide CLOUDINARY_URL" error on local.
+# Add Cloudinary only if configured
 if os.getenv("CLOUDINARY_URL"):
     INSTALLED_APPS = ['cloudinary', 'cloudinary_storage'] + INSTALLED_APPS
 
@@ -80,13 +78,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # ---- Database ----
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",  # handy for local if no DATABASE_URL
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
         ssl_require=True,
     )
 }
 
-# ---- Password validation ----
+# ---- Authentication ----
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
@@ -105,7 +103,12 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'core/static']
 
-# Serve static with WhiteNoise manifest storage (no other changes)
+# ✅ WhiteNoise + hashed static files
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_KEEP_ONLY_HASHED_FILES = True  # fix for missing admin files
+
+# Django 4.2+ storage system
 STORAGES = {
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
@@ -114,30 +117,27 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
 }
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-WHITENOISE_MANIFEST_STRICT = False
-
+# Media / Cloudinary
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Switch to Cloudinary for MEDIA only when CLOUDINARY_URL is present
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 if CLOUDINARY_URL:
     STORAGES["default"] = {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"}
     DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
-# ---- Misc ----
+# ---- Sessions ----
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = '/letters/'
-
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
-SESSION_COOKIE_AGE = 1800  # 30 minutes
+SESSION_COOKIE_AGE = 1800
 
+# ---- Security ----
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Email (console by default; override in prod if you add SMTP)
+# ---- Email ----
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "0") or 0)
@@ -148,7 +148,7 @@ EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").lower() == "true"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "webmaster@localhost")
 EMAIL_TIMEOUT = 5
 
-# Logging
+# ---- Logging ----
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
