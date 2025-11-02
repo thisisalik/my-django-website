@@ -114,6 +114,8 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
 }
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 WHITENOISE_MANIFEST_STRICT = False
 
 MEDIA_URL = '/media/'
