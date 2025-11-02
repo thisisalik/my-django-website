@@ -1,14 +1,19 @@
+# config/settings/staging.py
 from .base import *
+import os
 
 DEBUG = False
 
-# Staging can accept any host (Render assigns random subdomains)
 ALLOWED_HOSTS = ["*"]
 
-# Trust Render subdomains for CSRF (forms, logins, etc.)
-CSRF_TRUSTED_ORIGINS = [
-    "https://*.onrender.com",
-]
+# Get the actual Render hostname
+render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME")  # Example: my-django-website-1.onrender.com
+
+# Add both exact host and wildcard (safe)
+CSRF_TRUSTED_ORIGINS = []
+if render_host:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{render_host}")
+CSRF_TRUSTED_ORIGINS.append("https://*.onrender.com")
 
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
