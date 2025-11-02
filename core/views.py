@@ -48,16 +48,30 @@ def email_config_echo(request):
         "EMAIL_HOST_USER_tail": getattr(settings, "EMAIL_HOST_USER", "")[-16:],  # should end with '@smtp-brevo.com'
     })
 
-def email_force_send(request):
-    to = request.GET.get("to") or (request.user.email or "you@example.com")
-    EmailMessage(
-        "SMTP force test",
-        "Hello from TurtleApp via Brevo.",
-        "noreply@turtleapp.co",
-        [to],
-    ).send(fail_silently=False)
-    return JsonResponse({"ok": True, "to": to})
+from django.core.mail import EmailMessage
+from django.http import JsonResponse
 
+def email_force_send(request):
+    to = request.GET.get("to") or "you@example.com"
+    try:
+        msg = EmailMessage(
+            subject="SMTP force test",
+            body="Hello from TurtleApp via Brevo.",
+            from_email="noreply@turtleapp.co",
+            to=[to],
+        )
+        sent = msg.send(fail_silently=False)
+        return JsonResponse({"ok": True, "sent": sent, "to": to})
+    except Exception as e:
+        # Show full information so we know exactly what's wrong
+        return JsonResponse(
+            {
+                "ok": False,
+                "etype": e.__class__.__name__,
+                "error": str(e),
+            },
+            status=500,
+        )
 
 LETTER_MIN_CHARS = 200
 LETTER_MAX_CHARS = 2000
