@@ -12,7 +12,7 @@
     .nav {
       display:flex; align-items:center; gap:12px;
       padding:10px 14px; background:#fff; border-bottom:1px solid #eee;
-      overflow-x:auto;                /* allow horizontal scroll on small screens */
+      overflow-x:auto;
       -webkit-overflow-scrolling:touch;
       white-space:nowrap;
     }
@@ -21,7 +21,7 @@
       position:relative; display:flex; align-items:center; gap:8px;
       padding:8px 10px; border-radius:10px; text-decoration:none;
       color:#374151; font-weight:500;
-      flex:0 0 auto;                  /* don’t shrink */
+      flex:0 0 auto;
     }
     .nav-item:hover { background:#f6f7f8; }
     .nav-item.active { background:#eef6ff; color:#1d4ed8; }
@@ -48,6 +48,8 @@
 
     .container { max-width:980px; margin:16px auto; padding:0 16px; }
   </style>
+
+  {% block head_extra %}{% endblock %}
 </head>
 
 <body>
@@ -140,5 +142,14 @@
       } catch (e) {}
     })();
   </script>
+
+  <!-- Shared JS (centralized) -->
+  <script>
+    window.CITIES_JSON_URL = "{% static 'cities.json' %}";
+  </script>
+  <script src="{% static 'js/city_autocomplete.js' %}"></script>
+  <script src="{% static 'js/modal_image_viewer.js' %}"></script>
+
+  {% block scripts %}{% endblock %}
 </body>
 </html>
