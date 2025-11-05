@@ -111,6 +111,8 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
 }
+# cloudinary_storage still checks this legacy setting during collectstatic
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 # Switch to Cloudinary for MEDIA only when CLOUDINARY_URL is present
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
