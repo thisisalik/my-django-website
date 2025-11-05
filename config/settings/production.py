@@ -1,16 +1,11 @@
-# config/settings/production.py
 from .base import *
 import os
 
 DEBUG = False
 
-# Add the exact Render hostname if present, plus your custom domains.
 RENDER_HOST = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 
-ALLOWED_HOSTS = [
-    "turtleapp.co",
-    "www.turtleapp.co",
-]
+ALLOWED_HOSTS = ["turtleapp.co", "www.turtleapp.co"]
 if RENDER_HOST:
     ALLOWED_HOSTS += [RENDER_HOST, ".onrender.com"]
 
@@ -29,7 +24,11 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# Make static serving robust & cache-friendly in prod
+# --- STATICFILES storage (change this line) ---
+# Use compressed storage (no manifest) to avoid the ps.js mismatch.
 STORAGES["staticfiles"] = {
-    "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
 }
+
+# Loosen manifest strictness just in case something references a missing file.
+WHITENOISE_MANIFEST_STRICT = False
