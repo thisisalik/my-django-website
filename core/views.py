@@ -30,6 +30,12 @@ from .forms import (
 from .models import Notification
 from django.http import JsonResponse
 from django.shortcuts import redirect
+from .email_utils import (
+    send_welcome_email,
+    send_like_email,
+    send_match_email,
+    send_new_message_email_if_unread_streak,
+)
 
 LETTER_MIN_CHARS = 200
 LETTER_MAX_CHARS = 2000
@@ -356,20 +362,35 @@ def react_to_letter(request, letter_id):
     letter = get_object_or_404(Letter, id=letter_id)
     liked = request.POST.get('liked') == 'true'
 
-    LetterLike.objects.create(from_profile=profile, to_letter=letter, liked=liked)
+    like_obj = LetterLike.objects.create(from_profile=profile, to_letter=letter, liked=liked)
 
     if liked:
+        # Did they already like me?
         reverse_like = LetterLike.objects.filter(
             from_profile=letter.profile,
             to_letter__profile=profile,
             liked=True
         ).exists()
 
+        new_match = None
         if reverse_like:
-            if not Match.objects.filter(user1__in=[profile, letter.profile], user2__in=[profile, letter.profile]).exists():
-                Match.objects.create(user1=profile, user2=letter.profile)
+            # Create match only if not already present
+            if not Match.objects.filter(
+                user1__in=[profile, letter.profile],
+                user2__in=[profile, letter.profile]
+            ).exists():
+                new_match = Match.objects.create(user1=profile, user2=letter.profile)
+
+        # ---- Email notifications ----
+        if new_match:
+            # Mutual like -> send match email to both
+            send_match_email(profile, letter.profile)
+        else:
+            # First one-sided like -> notify letter owner
+            send_like_email(to_profile=letter.profile, from_profile=profile)
 
     return redirect('browse_letter')
+
 
 @login_required
 def upload_letter(request):
@@ -471,7 +492,12 @@ def message_view(request, profile_id):
             message.sender = sender
             message.receiver = receiver
             message.save()
+
+            # ---- Email notification (only once per unread streak from this sender) ----
+            send_new_message_email_if_unread_streak(sender, receiver)
+
             return redirect('message_view', profile_id=receiver.id)
+
     else:
         form = MessageForm()
 
@@ -715,6 +741,8 @@ def register(request):
         profile.only_same_city = bool(form.cleaned_data.get('only_same_city'))
         profile.connection_types = request.POST.getlist('connection_types')
         profile.save()
+        # --- welcome email (non-blocking) ---
+        send_welcome_email(user, profile)
 
         # --- save letter now ---
         if not skip_letter and letter_type:
@@ -855,11 +883,21 @@ def like_back(request, profile_id):
             liked=True
         ).exists()
 
+        new_match = None
         if reverse_like_exists:
-            if not Match.objects.filter(user1__in=[my_profile, other_profile], user2__in=[my_profile, other_profile]).exists():
-                Match.objects.create(user1=my_profile, user2=other_profile)
+            if not Match.objects.filter(
+                user1__in=[my_profile, other_profile],
+                user2__in=[my_profile, other_profile]
+            ).exists():
+                new_match = Match.objects.create(user1=my_profile, user2=other_profile)
+
+        # ---- Email notifications ----
+        if new_match:
+            # This is the moment a mutual match is created
+            send_match_email(my_profile, other_profile)
 
     return redirect('likes_received')
+
 
 @login_required
 def reject_like(request, profile_id):
