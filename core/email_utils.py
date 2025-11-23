@@ -25,16 +25,27 @@ def _safe_send(to_email: str, subject: str, body: str):
 
 def send_welcome_email(user, profile):
     name = profile.name or user.first_name or "there"
-    subject = "Welcome to Turtle 🐢"
+    subject = "Welcome to Turtle 🐢 — Your story starts with a letter"
     body = (
         f"Hi {name},\n\n"
-        "Welcome to Turtle.\n\n"
-        "Here’s how it works:\n"
-        "- You write or upload a letter about yourself.\n"
-        "- People can like your letter.\n"
-        "- When you both like each other’s letters, you match and unlock profiles & chat.\n\n"
-        "Take your time and write something real.\n\n"
-        "- Turtleapp\n"
+        "Welcome to Turtle — a slower, more meaningful way to connect.\n\n"
+    "On Turtle, everything starts with one letter.\n"
+    "You can:\n\n"
+    "✍️ Write a text letter directly on the site\n\n"
+    "📷 Upload a photo of a handwritten letter\n\n"
+    "📄 Upload a PDF you’ve already written\n\n"
+    "Once your letter is live, you’ll start seeing other people’s letters based on your preferences (age, city, connection type, etc.).\n\n"
+    "You only match when both people like each other’s letters.\n"
+    "That means every match comes from words, personality, and intention — not photos.\n\n"
+    "And once you match, you’ll unlock each other’s profile details:\n"
+    "profile picture, age, city, and more — plus the ability to chat.\n\n"
+    "Turtle is designed for people who want something real.\n"
+    "Take your time. Share your story. See who it resonates with.\n\n"
+    "We’re happy you’re here.\n"
+    "Log in here:\n"
+    "https://turtleapp.co/accounts/login/\n\n"
+    "Slowly,\n"
+    "Turtle 🐢\n"
     )
     _safe_send(user.email, subject, body)
 
@@ -51,9 +62,13 @@ def send_like_email(to_profile, from_profile):
     subject = "Someone liked your letter on Turtle 🐢"
     body = (
         f"Hi {name},\n\n"
-        f"{liker_name} liked your letter on Turtle.\n"
-        "Log in to Turtle to see their letter and decide if you like them back.\n\n"
-        "- Turtleapp\n"
+        "Someone just liked your letter on Turtle.\n\n"
+        "Go read their letter and see if you vibe — "
+        "you might discover something meaningful.\n\n"
+        "Log in here:\n"
+        "https://turtleapp.co/accounts/login/\n\n"
+        "Slowly,\n"
+        "Turtle 🐢\n"
     )
     _safe_send(user.email, subject, body)
 
@@ -71,12 +86,15 @@ def send_match_email(profile_a, profile_b):
         my_name = me.name or user.first_name or "there"
         other_name = other.name or "someone"
 
-        subject = "You have a new match on Turtle 💌"
+        subject = "You have a new match on Turtle 🐢💌"
         body = (
             f"Hi {my_name},\n\n"
             f"You and {other_name} liked each other’s letters.\n"
             "You can now see each other’s profiles and start chatting inside Turtle.\n\n"
-            "- Turtleapp\n"
+            "Log in here:\n"
+            "https://turtleapp.co/accounts/login/\n\n"
+            "Slowly,\n"
+            "Turtle 🐢\n"
         )
         _safe_send(user.email, subject, body)
 
@@ -110,11 +128,14 @@ def send_new_message_email_if_unread_streak(sender_profile, receiver_profile):
     receiver_name = receiver_profile.name or user.first_name or "there"
     sender_name = sender_profile.name or "Someone"
 
-    subject = "You have a new message on Turtle 💬"
+    subject = "You have a new message on Turtle 🐢💬"
     body = (
         f"Hi {receiver_name},\n\n"
         f"{sender_name} just sent you a message on Turtle.\n"
         "Open Turtle to read it and reply.\n\n"
-        "- Turtleapp\n"
+        "Log in here:\n"
+        "https://turtleapp.co/accounts/login/\n\n"
+        "Slowly,\n"
+        "Turtle 🐢\n"
     )
     _safe_send(user.email, subject, body)
