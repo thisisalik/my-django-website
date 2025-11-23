@@ -37,7 +37,7 @@ from .email_utils import (
     send_new_message_email_if_unread_streak,
 )
 
-LETTER_MIN_CHARS = 200
+LETTER_MIN_CHARS = 300
 LETTER_MAX_CHARS = 2000
 @login_required
 @require_GET

@@ -179,8 +179,8 @@
       <label for="id_text_content">Text Content:</label><br>
       {{ form.text_content }}
       <small id="letter_help" class="hint" style="display:block;margin-top:6px;">
-        Minimum <strong>200</strong> characters, maximum <strong>2000</strong>.
-        <span id="char_count">0</span>/<span id="char_max">2000</span>
+        Minimum <strong>300</strong> characters, maximum <strong>2000</strong>.
+  <span id="char_count">0</span>/<span id="char_max">2000</span>
       </small>
     </div>
 
@@ -448,7 +448,7 @@
     </script>
 <script>
   (function () {
-    const MIN_CHARS = 200;
+    const MIN_CHARS = 300;
     const MAX_CHARS = 2000;
   
     const textarea = document.getElementById('id_text_content');
