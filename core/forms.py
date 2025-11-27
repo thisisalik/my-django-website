@@ -193,7 +193,11 @@ class FullRegisterForm(UserCreationForm):
     )
 
     location = forms.CharField(required=False, label='City')
-
+    event_code = forms.CharField(
+        required=False,
+        label="Event code (if you joined an in-person event)",
+        help_text="Leave empty if you're not using a physical event code."
+    )
     letter_type = forms.ChoiceField(
         required=False,
         choices=[('text', 'Text'), ('image', 'Image'), ('pdf', 'PDF')],

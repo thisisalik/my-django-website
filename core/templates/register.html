@@ -121,6 +121,17 @@
       <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
     {% endfor %}
   </div>
+  <p>
+    <label for="id_event_code">Event code (optional):</label>
+    {{ form.event_code }}
+    {% if form.event_code.errors %}
+      <div class="err">{{ form.event_code.errors.0 }}</div>
+    {% endif %}
+    <small class="hint">
+      If you wrote your letter at a physical event, enter the code from that event here.
+      Otherwise you can leave this empty.
+    </small>
+  </p>
 
   <p style="margin-top: 20px;"><strong>Connection type:</strong></p>
   {% for checkbox in form.connection_types %}

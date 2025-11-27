@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
 from django.contrib import messages
 from django.http import HttpResponseForbidden
-from .models import Letter, LetterImage, Profile, LetterLike, Match, Message
+from .models import Letter, LetterImage, Profile, LetterLike, Match, Message, Event
 from django.db.models import Q
 from django.views.decorators.http import require_POST
 import os
@@ -267,17 +267,25 @@ def browse_letter(request):
     form = LetterFilterForm(request.GET or None)
     # Exclude own letters and letters from matched users
     matched_profiles = Match.objects.filter(
-    Q(user1=profile) | Q(user2=profile)
+        Q(user1=profile) | Q(user2=profile)
     ).values_list('user1', 'user2')
 
-    # Flatten and remove self
     matched_ids = set()
     for u1, u2 in matched_profiles:
         matched_ids.add(u1)
         matched_ids.add(u2)
     matched_ids.discard(profile.id)
 
-    letters = Letter.objects.exclude(profile=profile).exclude(profile__id__in=matched_ids)
+    # 🔹 Base pool depends on event mode
+    if profile.limit_to_event_pool and profile.active_event_id:
+        # Event mode ON → only letters from this event
+        letters = Letter.objects.filter(event=profile.active_event)
+    else:
+        # Normal global mode → only non-event letters
+        letters = Letter.objects.filter(event__isnull=True)
+
+    # then apply your previous excludes
+    letters = letters.exclude(profile=profile).exclude(profile__id__in=matched_ids)
 
     if form.is_valid() and form.has_changed():
         gender = form.cleaned_data.get('gender')
@@ -353,6 +361,19 @@ def browse_letter(request):
         'unseen_matches_count': unseen_matches_count,
     })
 
+@login_required
+@require_POST
+def toggle_event_mode(request):
+    profile = request.user.profile
+    # If they don't have an active event, nothing to toggle
+    if not profile.active_event_id:
+        return redirect('browse_letter')
+
+    # Checked = "on" exists, unchecked = missing
+    limit = request.POST.get('limit_to_event_pool') == '1'
+    profile.limit_to_event_pool = limit
+    profile.save(update_fields=['limit_to_event_pool'])
+    return redirect('browse_letter')
 
 
 # 🧠 React to a Letter
@@ -427,17 +448,31 @@ def upload_letter(request):
         # Create the letter
         if lt == 'text':
             text = (form.cleaned_data.get('text_content') or '').strip()
-            Letter.objects.create(profile=profile, letter_type='text', text_content=text)
+            Letter.objects.create(
+                profile=profile,
+                letter_type='text',
+                text_content=text,
+                event=event_for_letter,
+            )
 
         elif lt == 'pdf':
             pdf = form.cleaned_data.get('pdf')
-            Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+            Letter.objects.create(
+                profile=profile,
+                letter_type='pdf',
+                pdf=pdf,
+                event=event_for_letter,
+            )
 
         elif lt == 'image':
-            letter = Letter.objects.create(profile=profile, letter_type='image')
+            letter = Letter.objects.create(
+                profile=profile,
+                letter_type='image',
+                event=event_for_letter,
+            )
             for img in request.FILES.getlist('images'):
-                # form.clean already checked these are images
                 LetterImage.objects.create(letter=letter, image=img)
+
 
         # No success flash; just go back
         return redirect('view_profile')
@@ -1118,3 +1153,30 @@ class CustomLoginView(LoginView):
         # 🧠 Now let Django handle login and redirect
         return super().form_valid(form)
     
+@login_required
+def join_event(request):
+    """
+    Single URL for all events.
+    Users type an event code (like NOV27) that maps to an Event.join_code.
+    """
+    if request.method == 'POST':
+        code = (request.POST.get('join_code') or '').strip()
+        if not code:
+            dj_messages.error(request, "Please enter an event code.")
+            return render(request, 'join_event.html', {})
+
+        try:
+            event = Event.objects.get(join_code__iexact=code, is_active=True)
+        except Event.DoesNotExist:
+            dj_messages.error(request, "❌ Event code not found or inactive.")
+            return render(request, 'join_event.html', {})
+
+        profile = request.user.profile
+        profile.active_event = event
+        profile.limit_to_event_pool = True
+        profile.save(update_fields=['active_event', 'limit_to_event_pool'])
+
+        # Send them to upload letter – in event mode this will create an event letter
+        return redirect('upload_letter')
+
+    return render(request, 'join_event.html', {})

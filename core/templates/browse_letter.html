@@ -2,6 +2,23 @@
 {% load static %}
 
 {% block content %}
+{% if request.user.is_authenticated and request.user.profile.active_event %}
+  <form method="post" action="{% url 'toggle_event_mode' %}" style="margin-bottom: 15px;">
+    {% csrf_token %}
+    <label>
+      <input
+        type="checkbox"
+        name="limit_to_event_pool"
+        value="1"
+        {% if request.user.profile.limit_to_event_pool %}checked{% endif %}
+      >
+      Only show letters from the event:
+      <strong>{{ request.user.profile.active_event.name }}</strong>
+    </label>
+    <button type="submit" class="btn btn-sm" style="margin-left: 8px;">Update</button>
+  </form>
+{% endif %}
+
 <h2>Browse Letters 💌</h2>
 
 {% if letter %}

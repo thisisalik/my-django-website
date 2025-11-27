@@ -35,7 +35,8 @@ urlpatterns = [
     path('accounts/login/', CustomLoginView.as_view(), name='login'),
     path('unmatch/<int:match_id>/', views.unmatch, name='unmatch'),
     path('letter/pdf/<int:letter_id>/', views.letter_pdf_proxy, name='letter_pdf_proxy'),
-
+    path('event/mode/', views.toggle_event_mode, name='toggle_event_mode'),
+    path('join-event/', views.join_event, name='join_event'),
 ]
 
 if settings.DEBUG:
