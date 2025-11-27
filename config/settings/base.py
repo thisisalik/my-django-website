@@ -124,7 +124,7 @@ WHITENOISE_KEEP_ONLY_HASHED_FILES = True
 # Django 4.2+ storage system
 STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
