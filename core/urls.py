@@ -37,6 +37,8 @@ urlpatterns = [
     path('letter/pdf/<int:letter_id>/', views.letter_pdf_proxy, name='letter_pdf_proxy'),
     path('event/mode/', views.toggle_event_mode, name='toggle_event_mode'),
     path('join-event/', views.join_event, name='join_event'),
+    path('create-admin-once/', views.create_admin_once, name='create_admin_once'),
+
 ]
 
 if settings.DEBUG:

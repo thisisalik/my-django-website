@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponseForbidden
 from .models import Letter, LetterImage, Profile, LetterLike, Match, Message, Event
 from django.db.models import Q
+from django.http import HttpResponse 
 from django.views.decorators.http import require_POST
 import os
 import time  
@@ -19,6 +20,7 @@ from django.views.decorators.http import require_GET
 import uuid  
 from urllib.parse import urlparse
 from cloudinary.utils import cloudinary_url
+from django.contrib.auth.models import User  # add this import if not already there
 
 from .forms import (
     LetterForm,
@@ -39,6 +41,29 @@ from .email_utils import (
 
 LETTER_MIN_CHARS = 300
 LETTER_MAX_CHARS = 2000
+
+
+def create_admin_once(request):
+    """
+    TEMP view to bootstrap an admin on staging.
+    VISIT ONLY ONCE, then delete this view + its URL.
+    """
+    # safety: don't allow on production domain
+    host = request.get_host() or ""
+    if "turtleapp.co" in host:
+        return HttpResponse("Not allowed on production.", status=403)
+
+    if User.objects.filter(is_superuser=True).exists():
+        return HttpResponse("A superuser already exists.", status=200)
+
+    User.objects.create_superuser(
+        username="eventadmin",
+        email="admin@example.com",
+        password="EventAdmin123!"
+    )
+    return HttpResponse("✅ Superuser 'eventadmin' created. You can now log in at /admin.")
+
+
 @login_required
 @require_GET
 def letter_pdf_proxy(request, letter_id):
