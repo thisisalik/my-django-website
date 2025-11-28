@@ -43,12 +43,6 @@ class Event(models.Model):
     name = models.CharField(max_length=255)
     join_code = models.CharField(max_length=20, unique=True)  # e.g. "NOV27", "SPRING25"
 
-    # optional, but nice to have
-    start_at = models.DateTimeField(blank=True, null=True)
-    end_at = models.DateTimeField(blank=True, null=True)
-
-    is_active = models.BooleanField(default=True)
-
     def __str__(self):
         return self.name
 
@@ -72,7 +66,7 @@ class Letter(models.Model):
         blank=True,
         related_name='letters',
     )
-    
+
 class LetterImage(models.Model):
     letter = models.ForeignKey(Letter, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='letters/images/')
