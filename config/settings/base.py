@@ -96,7 +96,6 @@ else:
         }
     }
 
-
 # ---- Authentication ----
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
@@ -116,15 +115,15 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "core/static"]
 
-# WhiteNoise + hashed static files
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# WhiteNoise static files (no manifest hashing to avoid MissingFileError)
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 WHITENOISE_MANIFEST_STRICT = False
-WHITENOISE_KEEP_ONLY_HASHED_FILES = True
+WHITENOISE_KEEP_ONLY_HASHED_FILES = False
 
 # Django 4.2+ storage system
 STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
