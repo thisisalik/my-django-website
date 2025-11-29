@@ -1,4 +1,3 @@
-# config/settings/base.py
 from pathlib import Path
 import os
 import dj_database_url
@@ -79,16 +78,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 if DATABASE_URL:
-    # Postgres (Render/Neon/etc.)
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
             conn_max_age=600,
-            ssl_require=True,  # safe for managed Postgres
+            ssl_require=True,
         )
     }
 else:
-    # Local development: SQLite (no ssl options)
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -115,11 +112,11 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "core/static"]
 
-# WhiteNoise static files (no manifest hashing)
+# ✅ FIX: Use NON-manifest storage (no MissingFileError during collectstatic)
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+
 WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_KEEP_ONLY_HASHED_FILES = False
-
 
 STORAGES = {
     "staticfiles": {
@@ -130,7 +127,7 @@ STORAGES = {
     },
 }
 
-# Media / Cloudinary
+# ---- Media / Cloudinary ----
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -168,7 +165,6 @@ LOGGING = {
     "loggers": {
         "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
         "django.template": {"handlers": ["console"], "level": "ERROR", "propagate": False},
-        # 👇 This prints SuspiciousOperation/DisallowedHost etc. to Render logs
         "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
     },
 }
