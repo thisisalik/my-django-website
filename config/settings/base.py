@@ -121,15 +121,16 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_KEEP_ONLY_HASHED_FILES = True
 
+# Django 4.2+ storage system
 STORAGES = {
     "staticfiles": {
-        # Use Django's plain storage; no Whitenoise compression step
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
 }
+
 # Media / Cloudinary
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

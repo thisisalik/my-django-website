@@ -42,6 +42,7 @@ from cloudinary_storage.storage import RawMediaCloudinaryStorage
 class Event(models.Model):
     name = models.CharField(max_length=255)
     join_code = models.CharField(max_length=20, unique=True)  # e.g. "NOV27", "SPRING25"
+    is_active = models.BooleanField(default=True)  # ✅ NEW: lets you turn events on/off
 
     def __str__(self):
         return self.name

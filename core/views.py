@@ -460,6 +460,11 @@ def upload_letter(request):
     if request.method == 'POST':
         form = LetterForm(request.POST, request.FILES)
 
+        # ✅ NEW: decide which event (if any) this letter belongs to
+        event_for_letter = None
+        if profile.limit_to_event_pool and profile.active_event_id:
+            event_for_letter = profile.active_event
+
         # Require a letter type (your form sets required=False)
         lt = (request.POST.get('letter_type') or '').strip()
         if not lt:
@@ -477,7 +482,7 @@ def upload_letter(request):
                 profile=profile,
                 letter_type='text',
                 text_content=text,
-                event=event_for_letter,
+                event=event_for_letter,  # ✅ now defined
             )
 
         elif lt == 'pdf':
@@ -486,18 +491,17 @@ def upload_letter(request):
                 profile=profile,
                 letter_type='pdf',
                 pdf=pdf,
-                event=event_for_letter,
+                event=event_for_letter,  # ✅ now defined
             )
 
         elif lt == 'image':
             letter = Letter.objects.create(
                 profile=profile,
                 letter_type='image',
-                event=event_for_letter,
+                event=event_for_letter,  # ✅ now defined
             )
             for img in request.FILES.getlist('images'):
                 LetterImage.objects.create(letter=letter, image=img)
-
 
         # No success flash; just go back
         return redirect('view_profile')
@@ -701,6 +705,7 @@ def register(request):
 
     if request.method == 'POST':
         temp_profile_picture = (request.POST.get('temp_profile_picture') or '').strip() or None
+        chosen_event = None  # ✅ will hold Event if they enter a valid event code
 
         if temp_profile_picture and 'profile_picture' not in request.FILES:
             abs_temp = os.path.join(settings.MEDIA_ROOT, temp_profile_picture)
@@ -732,7 +737,30 @@ def register(request):
             return render(request, 'register.html',
                           {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
 
-        # --- letter validation BEFORE saving user ---
+        # ✅ event_code is OPTIONAL, but if given we validate it here
+        event_code = (form.cleaned_data.get('event_code') or '').strip()
+        if event_code:
+            try:
+                chosen_event = Event.objects.get(join_code__iexact=event_code, is_active=True)
+            except Event.DoesNotExist:
+                form.add_error('event_code', "❌ Event code not found or inactive.")
+                uploaded = request.FILES.get('profile_picture')
+                if uploaded:
+                    try:
+                        temp_profile_picture = _save_temp_profile_picture(uploaded)
+                    except Exception:
+                        temp_profile_picture = None
+                if temp_profile_picture:
+                    form.fields['profile_picture'].required = False
+                    form.fields['profile_picture'].widget.attrs.pop('required', None)
+                messages.error(request, form.errors)
+                return render(
+                    request,
+                    'register.html',
+                    {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture}
+                )
+
+        # --- letter validation BEFORE saving user (unchanged) ---
         skip_letter = request.POST.get('skip_letter') in ('1', 'on', 'true', 'True')
         letter_type = form.cleaned_data.get('letter_type')
         text_content = (form.cleaned_data.get('text_content') or '').strip()
@@ -770,7 +798,7 @@ def register(request):
                         messages.error(request, "❌ Only image files are allowed for an Image letter.")
                         return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
 
-        # --- now safe to create user ---
+        # --- now safe to create user (unchanged) ---
         user = form.save(commit=False)
         user.username = form.cleaned_data['email']
         user.email = form.cleaned_data['email']
@@ -800,18 +828,39 @@ def register(request):
         profile.location = form.cleaned_data.get('location')
         profile.only_same_city = bool(form.cleaned_data.get('only_same_city'))
         profile.connection_types = request.POST.getlist('connection_types')
+
+        # ✅ If they gave a valid event code, attach them to that event + enable event-only mode
+        if chosen_event is not None:
+            profile.active_event = chosen_event
+            profile.limit_to_event_pool = True
+
         profile.save()
+
         # --- welcome email (non-blocking) ---
         send_welcome_email(user, profile)
 
-        # --- save letter now ---
+        # --- save letter now (only difference: tag with chosen_event) ---
         if not skip_letter and letter_type:
             if letter_type == 'text':
-                Letter.objects.create(profile=profile, letter_type='text', text_content=text_content)
+                Letter.objects.create(
+                    profile=profile,
+                    letter_type='text',
+                    text_content=text_content,
+                    event=chosen_event,  # ✅ may be None or an Event
+                )
             elif letter_type == 'pdf':
-                Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+                Letter.objects.create(
+                    profile=profile,
+                    letter_type='pdf',
+                    pdf=pdf,
+                    event=chosen_event,
+                )
             elif letter_type == 'image':
-                letter = Letter.objects.create(profile=profile, letter_type='image')
+                letter = Letter.objects.create(
+                    profile=profile,
+                    letter_type='image',
+                    event=chosen_event,
+                )
                 for img in images:
                     ct = (img.content_type or '').lower()
                     if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
