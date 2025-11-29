@@ -115,12 +115,12 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "core/static"]
 
-# WhiteNoise static files (no manifest hashing to avoid MissingFileError)
+# WhiteNoise static files (no manifest hashing)
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_KEEP_ONLY_HASHED_FILES = False
 
-# Django 4.2+ storage system
+
 STORAGES = {
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
