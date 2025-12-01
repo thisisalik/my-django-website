@@ -113,8 +113,7 @@ USE_TZ = True
 # ---- Static & Media ----
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "core/static"]
-
+STATICFILES_DIRS = [BASE_DIR / "static"]
 # Use the SIMPLE staticfiles storage so collectstatic doesn't crash
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
