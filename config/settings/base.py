@@ -113,12 +113,7 @@ USE_TZ = True
 # ---- Static & Media ----
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-
-# 🔹 IMPORTANT: use ONE project-level static folder.
-# Put your css/js in BASE_DIR / "static" (and keep app static in core/static if you want).
-STATICFILES_DIRS = [
-    BASE_DIR / "static",
-]
+STATICFILES_DIRS = [BASE_DIR / "core/static"]
 
 # Use the SIMPLE staticfiles storage so collectstatic doesn't crash
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
