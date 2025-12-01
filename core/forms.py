@@ -10,10 +10,10 @@ from django.contrib.auth.models import User
 from django.forms.widgets import ClearableFileInput
 from django.contrib.auth.password_validation import password_validators_help_text_html
 
-LETTER_MIN_CHARS = 200
+LETTER_MIN_CHARS = 300
 LETTER_MAX_CHARS = 2000
+CITIES_FILE_PATH = os.path.join(settings.BASE_DIR, 'static', 'js', 'cities.json')
 
-CITIES_FILE_PATH = os.path.join(settings.BASE_DIR, 'core', 'static', 'js', 'cities.json')
 with open(CITIES_FILE_PATH, encoding='utf-8') as f:
     VALID_CITIES = set(json.load(f))
 
@@ -35,7 +35,7 @@ class LetterForm(forms.ModelForm):
         pdf = cleaned_data.get('pdf')
 
         # --- Text validation ---
-        LETTER_MIN_CHARS = 200
+        LETTER_MIN_CHARS = 300
         LETTER_MAX_CHARS = 2000
         if letter_type == 'text':
             if not text_content:
