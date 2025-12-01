@@ -115,6 +115,7 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 # Use the SIMPLE staticfiles storage so collectstatic doesn't crash
+
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 STORAGES = {
@@ -125,7 +126,6 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
 }
-
 # Media / Cloudinary
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
