@@ -13,19 +13,13 @@
         {% if request.user.profile.limit_to_event_pool %}checked{% endif %}
       >
       Only show letters from the event:
-      <strong>{{ request.user.profile.active_event.join_code }}</strong>
-      {# or .name if you prefer #}
+      <strong>{{ request.user.profile.active_event.name }}</strong>
     </label>
     <button type="submit" class="btn btn-sm" style="margin-left: 8px;">Update</button>
-
-    {# 👇 NEW: let existing users switch to another event #}
-    <a href="{% url 'join_event' %}"
-       class="btn btn-sm"
-       style="margin-left: 8px;">
-      Change event
-    </a>
+    <a href="{% url 'join_event' %}" class="btn btn-sm" style="margin-left: 8px;">Change event</a>
   </form>
 {% endif %}
+
 
 
 <h2>Browse Letters 💌</h2>
