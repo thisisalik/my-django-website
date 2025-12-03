@@ -1269,11 +1269,11 @@ def join_event(request):
         profile.limit_to_event_pool = True
         profile.save(update_fields=['active_event', 'limit_to_event_pool'])
 
-        # ✅ Make existing global letters part of this event pool
-        Letter.objects.filter(profile=profile, event__isnull=True).update(event=event)
+        # ✅ Move ALL of this user's letters into the newly joined event
+        Letter.objects.filter(profile=profile).update(event=event)
 
-        # Send them to upload letter – in event mode this will create an event letter
-        return redirect('upload_letter')
+        # ✅ After joining/changing event, stay in browse letters
+        return redirect('browse_letter')
 
     return render(request, 'join_event.html', {})
 
