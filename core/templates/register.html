@@ -5,10 +5,53 @@
 <style>
   /* hide navbar on this page only */
   nav, .navbar, header { display: none !important; }
+  body {
+  background: linear-gradient(145deg, #edf1ff, #fbfdff);}
   .hint { color:#555; font-size: 0.95rem; }
   .err { color:#b00020; margin-top:6px; }
   .box { background:#f9f9f9; padding:15px; border-radius:10px; margin-bottom:20px; }
   .pwd-help { background:#fff7e6; border:1px solid #ffe1a6; color:#7a5200; padding:10px; border-radius:8px; margin-top:6px; }
+  form input[type="text"],
+  form input[type="email"],
+  form input[type="password"],
+  form select,
+  form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  padding: 9px 11px;
+  margin-top: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background-color: #fff;
+}
+
+form textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(37,99,235,0.3);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+
 </style>
 
 <h2>Create Account</h2>
@@ -119,6 +162,16 @@
       {% endfor %}
     </div>
 
+
+
+    <p style="margin-top: 20px;"><strong>Connection type:</strong></p>
+    {% for checkbox in form.connection_types %}
+      <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
+    {% endfor %}
+    {% if form.connection_types.errors %}
+      <div class="err">{{ form.connection_types.errors.0 }}</div>
+    {% endif %}
+    
     <p>
       <label for="id_event_code">Event code (optional):</label>
       {{ form.event_code }}
@@ -130,14 +183,6 @@
         Otherwise you can leave this empty.
       </small>
     </p>
-
-    <p style="margin-top: 20px;"><strong>Connection type:</strong></p>
-    {% for checkbox in form.connection_types %}
-      <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
-    {% endfor %}
-    {% if form.connection_types.errors %}
-      <div class="err">{{ form.connection_types.errors.0 }}</div>
-    {% endif %}
   </div>
 
   <!-- CARD 2: letter + consent + submit -->
@@ -145,10 +190,13 @@
     <p><strong>Add Your Letter:</strong></p>
     <p class="hint">
       Your letter is the only thing others will see at first — so take your time and share something that feels real. ✨
+    </p>
+    
+    <ul class="hint">
       <li><strong>Text</strong> — write directly in the box below.</li>
       <li><strong>Image</strong> — upload a clear photo of your handwritten letter.</li>
       <li><strong>PDF</strong> — upload a typed letter you saved as a file.</li>
-    </p>
+    </ul>
     <p style="margin-bottom: 8px;">
       <button type="button"
               id="letter_help_toggle"
@@ -223,9 +271,9 @@
 
     <div class="t-card-actions">
       <button type="submit"
-              class="btn btn-primary btn-full"
-              id="registerBtn"
-              disabled>
+        class="primary-btn"
+        id="registerBtn"
+        disabled>
         📝 Register
       </button>
     </div>
