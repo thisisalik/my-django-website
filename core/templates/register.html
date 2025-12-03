@@ -16,7 +16,7 @@
 {# We intentionally DO NOT render Django messages here to avoid old green success banners #}
 {# (No messages loop) #}
 
-<div class="box">
+<div class="t-card">
   <strong>Connect through emotion — not just photos.</strong><br><br>
   On this platform, you share a <strong>letter about yourself</strong>:<br>
   ✍️ Type it directly on the site,<br>
@@ -30,203 +30,212 @@
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
 
-  {# Show non-field errors only (no big duplicate summary box) #}
-  {{ form.non_field_errors }}
+  <!-- CARD 1: basic details + preferences -->
+  <div class="t-card">
+    {{ form.non_field_errors }}
 
-  <p><label for="id_name">Name:</label> {{ form.name }}</p>
+    <p><label for="id_name">Name:</label> {{ form.name }}</p>
 
-  <p>
-    <label for="id_email">Email:</label>
-    {{ form.email }}
-    {% if form.email.errors %}
-      <div class="err">{{ form.email.errors.0 }}</div>
-    {% endif %}
-  </p>
+    <p>
+      <label for="id_email">Email:</label>
+      {{ form.email }}
+      {% if form.email.errors %}
+        <div class="err">{{ form.email.errors.0 }}</div>
+      {% endif %}
+    </p>
 
-  <p>
-    <label for="id_password1">Password:</label> {{ form.password1 }}
-    {# Inline field error #}
-    {% if form.password1.errors %}
-      <div class="err">{{ form.password1.errors.0 }}</div>
-    {% endif %}
-    {# Password rules/help (uses Django validators help text if present) #}
-    
-    
-  </p>
-  <div id="pwd_rules" class="pwd-inline"></div>
+    <p>
+      <label for="id_password1">Password:</label> {{ form.password1 }}
+      {% if form.password1.errors %}
+        <div class="err">{{ form.password1.errors.0 }}</div>
+      {% endif %}
+    </p>
+    <div id="pwd_rules" class="pwd-inline"></div>
 
-  <p>
-    <label for="id_password2">Confirm Password:</label> {{ form.password2 }}
-    {% if form.password2.errors %}
-      <div class="err">{{ form.password2.errors.0 }}</div>
-    {% endif %}
-  </p>
+    <p>
+      <label for="id_password2">Confirm Password:</label> {{ form.password2 }}
+      {% if form.password2.errors %}
+        <div class="err">{{ form.password2.errors.0 }}</div>
+      {% endif %}
+    </p>
 
-  <p><label for="id_age">Age:</label>
-    <select name="age" id="id_age">
-      {% for age in ages %}
-        <option value="{{ age }}">{{ age }}</option>
+    <p><label for="id_age">Age:</label>
+      <select name="age" id="id_age">
+        {% for age in ages %}
+          <option value="{{ age }}">{{ age }}</option>
+        {% endfor %}
+      </select>
+    </p>
+
+    <p><label for="id_gender">Gender:</label> {{ form.gender }}</p>
+
+    <p>
+      {{ form.profile_picture.label_tag }}
+      {{ form.profile_picture }}
+      {% for error in form.profile_picture.errors %}
+        <div class="err">{{ error }}</div>
       {% endfor %}
-    </select>
-  </p>
+    </p>
 
-  <p><label for="id_gender">Gender:</label> {{ form.gender }}</p>
+    <input type="hidden" name="temp_profile_picture" value="{{ temp_profile_picture|default:'' }}">
+    {% if temp_profile_picture %}
+      <div style="margin-top:6px">
+        <img src="/media/{{ temp_profile_picture }}" alt="Selected profile picture"
+             style="max-width:140px;border-radius:10px;border:1px solid #ddd;">
+        <div class="hint">We’ll use this picture unless you choose another.</div>
+      </div>
+    {% endif %}
 
-  <p>
-    {{ form.profile_picture.label_tag }}
-    {{ form.profile_picture }}
-    {% for error in form.profile_picture.errors %}
-      <div class="err">{{ error }}</div>
-    {% endfor %}
-  </p>
+    <p><label for="id_preferred_gender">Preferred Gender:</label> {{ form.preferred_gender }}</p>
 
-  <input type="hidden" name="temp_profile_picture" value="{{ temp_profile_picture|default:'' }}">
-  {% if temp_profile_picture %}
-    <div style="margin-top:6px">
-      <img src="/media/{{ temp_profile_picture }}" alt="Selected profile picture"
-           style="max-width:140px;border-radius:10px;border:1px solid #ddd;">
-      <div class="hint">We’ll use this picture unless you choose another.</div>
+    <p><label for="id_preferred_age_min">Preferred Minimum Age:</label>
+      <select name="preferred_age_min" id="id_preferred_age_min">
+        {% for age in ages %}
+          <option value="{{ age }}">{{ age }}</option>
+        {% endfor %}
+      </select>
+    </p>
+
+    <p><label for="id_preferred_age_max">Preferred Maximum Age:</label>
+      <select name="preferred_age_max" id="id_preferred_age_max">
+        {% for age in ages %}
+          <option value="{{ age }}">{{ age }}</option>
+        {% endfor %}
+      </select>
+    </p>
+
+    <p>
+      <label for="id_location">City:</label>
+      <input type="text" name="location" id="id_location" value="{{ form.location.value|default_if_none:'' }}" autocomplete="off" />
+      {% if form.location.errors %}
+        <div class="err">{{ form.location.errors.0 }}</div>
+      {% endif %}
+      <div id="city-suggestions" style="border: 1px solid #ccc; display:none; position: absolute; background: white; z-index: 10;"></div>
+    </p>
+
+    <div style="margin-top: -10px; margin-bottom: 10px;">
+      {% for checkbox in form.only_same_city %}
+        <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
+      {% endfor %}
     </div>
-  {% endif %}
 
-  <p><label for="id_preferred_gender">Preferred Gender:</label> {{ form.preferred_gender }}</p>
+    <p>
+      <label for="id_event_code">Event code (optional):</label>
+      {{ form.event_code }}
+      {% if form.event_code.errors %}
+        <div class="err">{{ form.event_code.errors.0 }}</div>
+      {% endif %}
+      <small class="hint">
+        If you wrote your letter at a physical event, enter the code from that event here.
+        Otherwise you can leave this empty.
+      </small>
+    </p>
 
-  <p><label for="id_preferred_age_min">Preferred Minimum Age:</label>
-    <select name="preferred_age_min" id="id_preferred_age_min">
-      {% for age in ages %}
-        <option value="{{ age }}">{{ age }}</option>
-      {% endfor %}
-    </select>
-  </p>
-
-  <p><label for="id_preferred_age_max">Preferred Maximum Age:</label>
-    <select name="preferred_age_max" id="id_preferred_age_max">
-      {% for age in ages %}
-        <option value="{{ age }}">{{ age }}</option>
-      {% endfor %}
-    </select>
-  </p>
-
-  <p>
-    <label for="id_location">City:</label>
-    <input type="text" name="location" id="id_location" value="{{ form.location.value|default_if_none:'' }}" autocomplete="off" />
-    {% if form.location.errors %}
-      <div class="err">{{ form.location.errors.0 }}</div>
-    {% endif %}
-    <div id="city-suggestions" style="border: 1px solid #ccc; display:none; position: absolute; background: white; z-index: 10;"></div>
-  </p>
-
-  <div style="margin-top: -10px; margin-bottom: 10px;">
-    {% for checkbox in form.only_same_city %}
+    <p style="margin-top: 20px;"><strong>Connection type:</strong></p>
+    {% for checkbox in form.connection_types %}
       <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
     {% endfor %}
-  </div>
-  <p>
-    <label for="id_event_code">Event code (optional):</label>
-    {{ form.event_code }}
-    {% if form.event_code.errors %}
-      <div class="err">{{ form.event_code.errors.0 }}</div>
+    {% if form.connection_types.errors %}
+      <div class="err">{{ form.connection_types.errors.0 }}</div>
     {% endif %}
-    <small class="hint">
-      If you wrote your letter at a physical event, enter the code from that event here.
-      Otherwise you can leave this empty.
-    </small>
-  </p>
-
-  <p style="margin-top: 20px;"><strong>Connection type:</strong></p>
-  {% for checkbox in form.connection_types %}
-    <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
-  {% endfor %}
-  {% if form.connection_types.errors %}
-    <div class="err">{{ form.connection_types.errors.0 }}</div>
-  {% endif %}
-
-  <p><strong>Add Your Letter:</strong></p>
-  <p class="hint">
-    Your letter is the only thing others will see at first — so take your time and share something that feels real. ✨
-    <li><strong>Text</strong> — write directly in the box below.</li>
-    <li><strong>Image</strong> — upload a clear photo of your handwritten letter.</li>
-    <li><strong>PDF</strong> — upload a typed letter you saved as a file.</li>
-  </p>
-  <p style="margin-bottom: 8px;">
-    <button type="button"
-            id="letter_help_toggle"
-            style="border:none;background:none;color:#2563eb;cursor:pointer;padding:0;font-size:0.95rem;">
-      💡 Need inspiration?
-    </button>
-  </p>
-
-  <div id="letter_help_panel"
-       style="display:none;background:#f3f4f6;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:0.95rem;">
-    <strong>What could you write about?</strong>
-    <ul style="margin:6px 0 10px 18px;padding:0;">
-      <li>Share who you are beyond photos — your mood, your world right now.</li>
-      <li>Tell a small story from your life or a moment that changed you.</li>
-      <li>Mention what kind of connection you’re open to (dating, friendship, or just letters).</li>
-    </ul>
-
-    <strong>Example (short & honest):</strong>
-    <p style="margin-top:6px;">
-      “I’m 27, living in Berlin, and lately I’ve been feeling a bit overwhelmed by fast swiping apps.
-      I like slow mornings, long walks and writing things down instead of keeping them in my head.
-      I’m here for real conversations, even if they stay just inside this little corner of the internet.
-      If you’re someone who enjoys overthinking songs, noticing small details, or just sharing how your day actually felt,
-      I’d like to read your letter too.”
-    </p>
-
-    <p style="margin-top:10px;">
-      <strong>Tip:</strong> Don’t try to sound perfect. Write like you’re talking to one kind, curious stranger.
-    </p>
   </div>
-  <p>
-    <input type="checkbox" id="skip_upload_checkbox" name="skip_letter" value="1">
-    <label for="skip_upload_checkbox">I’ll upload my letter later</label>
-  </p>
 
-  <div id="letter_upload_section">
-    <p><label for="id_letter_type">Letter Type:</label> {{ form.letter_type }}</p>
+  <!-- CARD 2: letter + consent + submit -->
+  <div class="t-card">
+    <p><strong>Add Your Letter:</strong></p>
+    <p class="hint">
+      Your letter is the only thing others will see at first — so take your time and share something that feels real. ✨
+      <li><strong>Text</strong> — write directly in the box below.</li>
+      <li><strong>Image</strong> — upload a clear photo of your handwritten letter.</li>
+      <li><strong>PDF</strong> — upload a typed letter you saved as a file.</li>
+    </p>
+    <p style="margin-bottom: 8px;">
+      <button type="button"
+              id="letter_help_toggle"
+              style="border:none;background:none;color:#2563eb;cursor:pointer;padding:0;font-size:0.95rem;">
+        💡 Need inspiration?
+      </button>
+    </p>
 
-    <div id="text_content_div" style="display:none;">
-      <label for="id_text_content">Text Content:</label><br>
-      {{ form.text_content }}
-      <small id="letter_help" class="hint" style="display:block;margin-top:6px;">
-        Minimum <strong>300</strong> characters, maximum <strong>2000</strong>.
-  <span id="char_count">0</span>/<span id="char_max">2000</span>
-      </small>
+    <div id="letter_help_panel"
+         style="display:none;background:#f3f4f6;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:0.95rem;">
+      <strong>What could you write about?</strong>
+      <ul style="margin:6px 0 10px 18px;padding:0;">
+        <li>Share who you are beyond photos — your mood, your world right now.</li>
+        <li>Tell a small story from your life or a moment that changed you.</li>
+        <li>Mention what kind of connection you’re open to (dating, friendship, or just letters).</li>
+      </ul>
+
+      <strong>Example (short & honest):</strong>
+      <p style="margin-top:6px;">
+        “I’m 27, living in Berlin, and lately I’ve been feeling a bit overwhelmed by fast swiping apps.
+        I like slow mornings, long walks and writing things down instead of keeping them in my head.
+        I’m here for real conversations, even if they stay just inside this little corner of the internet.
+        If you’re someone who enjoys overthinking songs, noticing small details, or just sharing how your day actually felt,
+        I’d like to read your letter too.”
+      </p>
+
+      <p style="margin-top:10px;">
+        <strong>Tip:</strong> Don’t try to sound perfect. Write like you’re talking to one kind, curious stranger.
+      </p>
     </div>
 
-    <div id="image_upload_div" style="display:none;">
-      <label for="images">Upload Images:</label><br>
-      <input type="file" id="id_letter_images" name="images" multiple accept="image/*">
+    <p>
+      <input type="checkbox" id="skip_upload_checkbox" name="skip_letter" value="1">
+      <label for="skip_upload_checkbox">I’ll upload my letter later</label>
+    </p>
+
+    <div id="letter_upload_section">
+      <p><label for="id_letter_type">Letter Type:</label> {{ form.letter_type }}</p>
+
+      <div id="text_content_div" style="display:none;">
+        <label for="id_text_content">Text Content:</label><br>
+        {{ form.text_content }}
+        <small id="letter_help" class="hint" style="display:block;margin-top:6px;">
+          Minimum <strong>300</strong> characters, maximum <strong>2000</strong>.
+          <span id="char_count">0</span>/<span id="char_max">2000</span>
+        </small>
+      </div>
+
+      <div id="image_upload_div" style="display:none;">
+        <label for="images">Upload Images:</label><br>
+        <input type="file" id="id_letter_images" name="images" multiple accept="image/*">
+      </div>
+
+      <div id="pdf_upload_div" style="display:none;">
+        <label for="id_pdf">Upload PDF:</label><br>
+        <input type="file" name="pdf" id="id_pdf" accept=".pdf,application/pdf">
+        {% if form.pdf.errors %}
+          <div class="err">{{ form.pdf.errors.0 }}</div>
+        {% endif %}
+      </div>
+      <br>
     </div>
 
-    <div id="pdf_upload_div" style="display:none;">
-      <label for="id_pdf">Upload PDF:</label><br>
-      <input type="file" name="pdf" id="id_pdf" accept=".pdf,application/pdf">
-      {% if form.pdf.errors %}
-        <div class="err">{{ form.pdf.errors.0 }}</div>
+    <p style="margin-top: 15px;">
+      <label for="id_agree_to_share">
+        {{ form.agree_to_share }} {{ form.agree_to_share.label }}
+      </label>
+      {% if form.agree_to_share.errors %}
+        <div class="err">{{ form.agree_to_share.errors.0 }}</div>
       {% endif %}
+    </p>
+
+    <div class="t-card-actions">
+      <button type="submit"
+              class="btn btn-primary btn-full"
+              id="registerBtn"
+              disabled>
+        📝 Register
+      </button>
     </div>
-    <br>
   </div>
-
-  <p style="margin-top: 15px;">
-    <label for="id_agree_to_share">
-      {{ form.agree_to_share }} {{ form.agree_to_share.label }}
-    </label>
-    {% if form.agree_to_share.errors %}
-      <div class="err">{{ form.agree_to_share.errors.0 }}</div>
-    {% endif %}
-  </p>
-
-  <br><br>
-  <button type="submit" class="btn btn-success" id="registerBtn" disabled>📝 Register</button>
 </form>
 
 <p style="margin-top: 20px;">Already have an account? <a href="/accounts/login/">Login</a></p>
+
 <script src="{% static 'js/city_autocomplete.js' %}?v={{ timestamp }}"></script>
 
-  
 <script>
   const letterTypeSelect = document.getElementById('id_letter_type');
   const textDiv = document.getElementById('text_content_div');
@@ -632,5 +641,4 @@
       })();
     </script>
     
-      
 {% endblock %}
