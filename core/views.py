@@ -615,6 +615,11 @@ def edit_profile(request):
             for img in request.FILES.getlist('images'):
                 LetterImage.objects.create(letter=letter, image=img)
 
+        # ✅ Decide which event (if any) this NEW letter should belong to
+        event_for_letter = None
+        if profile.limit_to_event_pool and profile.active_event_id:
+            event_for_letter = profile.active_event
+
         # -- NEW letter creation (uses LetterForm.clean to enforce 200..2000) --
         attempted = any([
             request.POST.get('letter_type'),
@@ -631,11 +636,25 @@ def edit_profile(request):
                 images = request.FILES.getlist('images')
 
                 if lt == 'text':
-                    Letter.objects.create(profile=profile, letter_type='text', text_content=text_content)
+                    Letter.objects.create(
+                        profile=profile,
+                        letter_type='text',
+                        text_content=text_content,
+                        event=event_for_letter,  # ✅ attach to active event if any
+                    )
                 elif lt == 'pdf':
-                    Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+                    Letter.objects.create(
+                        profile=profile,
+                        letter_type='pdf',
+                        pdf=pdf,
+                        event=event_for_letter,  # ✅
+                    )
                 elif lt == 'image':
-                    new_letter = Letter.objects.create(profile=profile, letter_type='image')
+                    new_letter = Letter.objects.create(
+                        profile=profile,
+                        letter_type='image',
+                        event=event_for_letter,  # ✅
+                    )
                     for img in images:
                         LetterImage.objects.create(letter=new_letter, image=img)
             else:
@@ -1250,7 +1269,11 @@ def join_event(request):
         profile.limit_to_event_pool = True
         profile.save(update_fields=['active_event', 'limit_to_event_pool'])
 
+        # ✅ Make existing global letters part of this event pool
+        Letter.objects.filter(profile=profile, event__isnull=True).update(event=event)
+
         # Send them to upload letter – in event mode this will create an event letter
         return redirect('upload_letter')
 
     return render(request, 'join_event.html', {})
+
