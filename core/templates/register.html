@@ -59,11 +59,14 @@ form textarea {
 {# We intentionally DO NOT render Django messages here to avoid old green success banners #}
 {# (No messages loop) #}
 
-<div class="box">  <strong>Connect through letters. Not swipes.</strong>
-  <br><br>  Slow down and be seen for your words. Share a letter about yourself or tell a small story, share a thought, or just write what’s on your mind.<br><br>  <strong>Connect through letters. Not swipes. </strong><br><br>  Slow down and be seen for your words. Share a letter about yourself or tell a story, share a thought, or just write what’s on your mind.<br><br>  <em>You match based on letters first. Only after there’s a mutual like do you both unlock profiles (photos and basic info) and can chat inside Turtle.    <br><br>It’s a slower but more meaningful way to connect.</em>   
-<br><br>It’s a slower but more meaningful way to connect 🐢💌 
-</em></div><div class="info-box" role="status" aria-live="polite"> 
-   <span class="info-icon" aria-hidden="true">ℹ️</span>
+<div class="t-card">
+  <strong>Connect through letters. Not swipes. </strong><br><br>
+  Slow down and be seen for your words. Share a letter about yourself or tell a story, share a thought, or just write what’s on your mind.<br><br>
+  <em>You match based on letters first. Only after there’s a mutual like do you both unlock profiles (photos and basic info) and can chat inside Turtle.
+    <br><br>It’s a slower but more meaningful way to connect 🐢💌 </em>
+    <span class="info-icon" aria-hidden="true">ℹ️</span>
+    <strong>Heads up:</strong> please fill in <em>all</em> fields to create your account.
+</div> 
 
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
@@ -166,7 +169,7 @@ form textarea {
     {% if form.connection_types.errors %}
       <div class="err">{{ form.connection_types.errors.0 }}</div>
     {% endif %}
-
+    
     <p>
       <label for="id_event_code">Event code (optional):</label>
       {{ form.event_code }}
