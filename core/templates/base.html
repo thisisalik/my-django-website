@@ -10,45 +10,85 @@
   <style>
     /* --- Nav --- */
     .nav {
-      display:flex; align-items:center; gap:12px;
-      padding:10px 14px; background:#fff; border-bottom:1px solid #eee;
-      overflow-x:auto;                /* allow horizontal scroll on small screens if ever needed */
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px 14px;
+      background:#fff;
+      border-bottom:1px solid #eee;
+      overflow-x:auto;                /* still safe on very small phones */
       -webkit-overflow-scrolling:touch;
       white-space:nowrap;
     }
-    .nav-group { display:flex; align-items:center; gap:10px; }
+    .nav-group {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin:0 auto;                  /* center group */
+    }
     .nav-item {
-      position:relative; display:flex; align-items:center; gap:8px;
-      padding:8px 10px; border-radius:10px; text-decoration:none;
-      color:#374151; font-weight:500;
-      flex:0 0 auto;                  /* don’t shrink */
+      position:relative;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:10px;
+      text-decoration:none;
+      color:#374151;
+      font-weight:500;
+      flex:0 0 auto;
     }
     .nav-item:hover { background:#f6f7f8; }
     .nav-item.active { background:#eef6ff; color:#1d4ed8; }
     .nav-item .icon { font-size:22px; line-height:1; }
     .nav-item .label { font-size:14px; }
+
     .badge {
-      position:absolute; top:-4px; right:-4px;
-      background:#ef4444; color:#fff; border-radius:999px;
-      font-size:11px; padding:2px 6px; line-height:1;
+      position:absolute;
+      top:-4px;
+      right:-4px;
+      background:#ef4444;
+      color:#fff;
+      border-radius:999px;
+      font-size:11px;
+      padding:2px 6px;
+      line-height:1;
       display:none;
     }
-    .nav-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
 
     .avatar {
-      width:28px; height:28px; border-radius:50%; object-fit:cover;
+      width:28px;
+      height:28px;
+      border-radius:50%;
+      object-fit:cover;
       border:1px solid #e5e7eb;
     }
 
-    /* 🔹 Mobile nav: icons only so everything fits without swiping */
     @media (max-width:560px){
-      .nav { justify-content:flex-start; gap:8px; padding:8px 10px; }
-      .nav-group { gap:4px; }
-      .nav-item { padding:8px; }
-      .nav-item .label { display:none; }  /* hide text labels, keep emojis/avatar */
+      .nav { justify-content:center; gap:8px; }
+      .nav-group { gap:6px; }
+      .nav-item { padding:8px 8px; }
+      .nav-item .label { font-size:13px; }
     }
 
-    .container { max-width:980px; margin:16px auto; padding:0 16px; }
+    /* small footer logout at bottom of page */
+    .logout-footer {
+      display:flex;
+      justify-content:center;
+      padding:12px 0 18px;
+    }
+    .logout-footer button {
+      border-radius:999px;
+      padding:8px 16px;
+      border:none;
+      background:#e5e7eb;
+      color:#111827;
+      cursor:pointer;
+      font-size:0.95rem;
+    }
+    .logout-footer button:hover {
+      background:#d1d5db;
+    }
   </style>
 </head>
 
@@ -95,21 +135,20 @@
         <span class="label">Profile</span>
       </a>
     </div>
-
-    <div class="nav-right">
-      <form action="/accounts/logout/" method="post" style="margin:0;">
-        {% csrf_token %}
-        <button title="Logout" type="submit" class="nav-item" style="background:transparent;">
-          <span class="icon" aria-hidden="true">🚪</span>
-          <span class="label">Logout</span>
-        </button>
-      </form>
-    </div>
   </nav>
 
   <div class="container">
     {% block content %}{% endblock %}
   </div>
+
+  {% if request.user.is_authenticated %}
+    <div class="logout-footer">
+      <form action="/accounts/logout/" method="post" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" title="Logout">Logout</button>
+      </form>
+    </div>
+  {% endif %}
 
   <script>
     function updateNotifications() {
