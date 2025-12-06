@@ -3,10 +3,10 @@
 
 {% block content %}
 <style>
-  /* Make this page a bit tighter vertically */
+  /* Make this page tighter vertically */
   .container {
     min-height: auto;
-    padding-bottom: 12px;
+    padding-bottom: 6px;   /* smaller so Logout comes closer */
   }
 
   /* Event card – short & compact */
@@ -66,39 +66,45 @@
     margin: 10px 0 10px;
   }
 
-  /* Letter card – SAME height for image/text/pdf */
+  /* Letter card – fixed compact height for image/text/pdf */
   .letter-card {
     background:#fff;
     border:1px solid #e5e7eb;
     border-radius:18px;
     box-shadow:0 8px 24px rgba(15,23,42,0.06);
-    padding:14px 16px;
-    margin:10px 0 10px;
-    max-height: 460px;      /* 🔴 key line: cap total card height */
-    overflow-y: auto;       /* scroll inside when content is longer */
+    padding:12px 14px;
+    margin:10px 0 8px;
+
+    height: 270px;           /* 🔴 about 40% shorter than before */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
-  /* Image letters – keep big & readable */
+  /* Text letters – scroll inside */
+  .letter-body {
+    flex-grow: 1;
+    overflow-y: auto;
+  }
+
+  /* Image letters – match the same vertical feel */
   .letter-card img.clickable-image {
     width: 100%;
-    max-height: 400px;
+    max-height: 245px;       /* shortened */
     border-radius: 14px;
     object-fit: contain;
   }
 
-  /* Text letters – scroll inside if long */
-  .letter-body {
-    max-height: 400px;      /* same content area as image */
-    overflow-y: auto;
-  }
-
-  /* PDF viewer – lives inside the same capped letter-card */
+  /* PDF viewer – fits inside same card height */
   .pdf-card {
-    border: none;           /* card border already on .letter-card */
+    border: none;            /* card border already on .letter-card */
     padding: 0;
     background: transparent;
     box-shadow: none;
     margin: 0;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
   }
   .pdf-toolbar {
     display:flex;
@@ -129,7 +135,7 @@
   }
   .pdf-canvas-wrap {
     width:100%;
-    max-height:400px;       /* same content area as image/text */
+    max-height:215px;        /* shortened so card stays small */
     overflow:auto;
     border-radius:12px;
     background:#fafafa;
@@ -144,9 +150,22 @@
     .event-card { padding:7px 9px; }
   }
 
+  /* Even tighter on short screens (e.g. iPhone 11 with browser chrome) */
+  @media (max-height: 750px) {
+    .letter-card {
+      height: 230px;
+    }
+    .letter-card img.clickable-image {
+      max-height: 210px;
+    }
+    .pdf-canvas-wrap {
+      max-height: 185px;
+    }
+  }
+
   /* Like / Skip – keep Logout close */
   .browse-actions {
-    margin-top: 8px;
+    margin-top: 6px;
     margin-bottom: 0;
   }
 </style>
