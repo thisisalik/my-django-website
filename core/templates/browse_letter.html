@@ -43,41 +43,86 @@
   </style>
   
 
-{% if request.user.is_authenticated and request.user.profile.active_event %}
-  <div class="t-card event-card">
-    <form method="post"
-          action="{% url 'toggle_event_mode' %}"
-          class="event-filter-form">
+  {% if request.user.is_authenticated and request.user.profile.active_event %}
+  <style>
+    /* compact event card + pill buttons (local to this page) */
+    .event-card {
+      padding: 12px 14px;
+      margin: 10px 0 14px;
+      border-radius: 18px;
+      background: #ffffff;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+      border: 1px solid #e5e7eb;
+      font-size: 0.95rem;
+    }
+    .event-card-title {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .event-name {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .event-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .event-pill-btn {
+      border-radius: 999px;
+      padding: 7px 14px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .event-pill-primary {
+      background: #111827;
+      color: #ffffff;
+    }
+    .event-pill-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+    .event-hint {
+      margin: 0;
+      color: #4b5563;
+      font-size: 0.88rem;
+    }
+  </style>
+
+  <div class="event-card">
+    <form method="post" action="{% url 'toggle_event_mode' %}" style="margin:0;">
       {% csrf_token %}
+      <label class="event-card-title">
+        <input
+          type="checkbox"
+          name="limit_to_event_pool"
+          value="1"
+          {% if request.user.profile.limit_to_event_pool %}checked{% endif %}
+        >
+        Only show letters from the event:
+      </label>
 
-      <div class="event-filter-main">
-        <label style="display:flex;align-items:center;gap:6px;">
-          <input
-            type="checkbox"
-            name="limit_to_event_pool"
-            value="1"
-            {% if request.user.profile.limit_to_event_pool %}checked{% endif %}
-          >
-          <span>Only show letters from the event:</span>
-        </label>
-        <strong>{{ request.user.profile.active_event.name }}</strong>
+      <div class="event-name">{{ request.user.profile.active_event.name }}</div>
+
+      <div class="event-actions">
+        <button type="submit" class="event-pill-btn event-pill-primary">Update</button>
+        <a href="{% url 'join_event' %}" class="event-pill-btn event-pill-secondary">Change event</a>
       </div>
 
-      <div class="event-filter-actions">
-        <button type="submit" class="btn btn-secondary">
-          Update
-        </button>
-        <a href="{% url 'join_event' %}" class="btn btn-secondary">
-          Change event
-        </a>
-      </div>
-
-      <div class="event-note">
+      <p class="event-hint">
         You can switch the event anytime — this only affects which letters you see.
-      </div>
+      </p>
     </form>
   </div>
 {% endif %}
+
 
 <h2>Browse Letters 💌</h2>
 
@@ -129,58 +174,62 @@
         {% with gid="browse" %}
         <style>
             .pdf-card {
-              border: none;              /* let outer .letter-card handle the frame */
-              border-radius: 0;
-              padding: 0;
-              background: transparent;
+              border: 1px solid #ddd;
+              border-radius: 12px;
+              padding: 10px;
             }
             .pdf-toolbar {
-              display:flex;
-              align-items:center;
-              gap:8px;
-              flex-wrap:wrap;
-              justify-content:flex-start;
-              margin-bottom:8px;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              flex-wrap: wrap;
+              justify-content: flex-start;
+              margin-bottom: 6px;
             }
             .pdf-btn {
-              border:1px solid #e5e7eb;
-              background:#f9fafb;
-              padding:5px 9px;
-              border-radius:8px;
-              cursor:pointer;
-              line-height:1;
-              font-size:13px;
+              border: 1px solid #ccc;
+              background: #f6f6f6;
+              padding: 5px 9px;
+              border-radius: 8px;
+              cursor: pointer;
+              line-height: 1;
+              font-size: 13px;
             }
             .pdf-btn:disabled {
-              opacity:.4;
-              cursor:not-allowed;
+              opacity: .35;
+              cursor: not-allowed;
             }
             .pdf-badge {
-              font-size:13px;
-              color:#444;
-              min-width:52px;
-              text-align:center;
+              font-size: 12px;
+              color: #444;
+              min-width: 50px;
+              text-align: center;
             }
+            /* 🔑 key bit: cap visual height so it’s similar to image letters */
             .pdf-canvas-wrap {
-              width:100%;
-              max-height:360px;          /* 🔹 keep height similar to image letters */
-              overflow:auto;
-              border-radius:10px;
-              background:#fafafa;
-              display:flex;
-              justify-content:center;
-              align-items:flex-start;
+              width: 100%;
+              max-height: 320px;   /* desktop-ish */
+              overflow: auto;
+              border-radius: 8px;
+              background: #fafafa;
+              display: flex;
+              justify-content: center;
+              align-items: flex-start;
             }
-            .pdf-canvas-wrap::-webkit-scrollbar { height:8px;width:8px; }
-            .pdf-canvas-wrap::-webkit-scrollbar-thumb { background:#d0d0d0;border-radius:8px; }
-          
-            @media (max-width:420px){
-              .pdf-toolbar{gap:6px;margin-bottom:6px}
-              .pdf-btn{padding:4px 7px;border-radius:7px;font-size:12px}
-              .pdf-badge{font-size:12px;min-width:46px}
-              .pdf-canvas-wrap{max-height:320px;}   /* a bit shorter on small phones */
+            .pdf-canvas-wrap::-webkit-scrollbar { height: 8px; width: 8px; }
+            .pdf-canvas-wrap::-webkit-scrollbar-thumb {
+              background: #d0d0d0;
+              border-radius: 8px;
+            }
+            @media (max-width: 420px) {
+              .pdf-card { padding: 8px; border-radius: 10px; }
+              .pdf-toolbar { gap: 5px; margin-bottom: 4px; }
+              .pdf-btn { padding: 4px 7px; font-size: 12px; }
+              .pdf-badge { font-size: 11px; min-width: 46px; }
+              .pdf-canvas-wrap { max-height: 260px; }  /* smaller on phones */
             }
           </style>
+          
           
 
           <div class="pdf-card" id="pdfCard-{{ gid }}">
@@ -235,21 +284,27 @@
                 nextBtn.disabled = (pageNum>=pageCount);
               }
 
-              function fitToWidth(page){
+              function fitToCard(page){
                 const card = document.getElementById('pdfCard-{{ gid }}');
                 const wrap = card.querySelector('.pdf-canvas-wrap');
-                const available = wrap.clientWidth - 2;
-                const viewport1 = page.getViewport({ scale:1 });
-                baseScale = available / viewport1.width;
+                const availableW = wrap.clientWidth - 2;
+                const viewport1 = page.getViewport({ scale: 1 });
+
+  // 🔑 cap to about one-third of the screen height so it doesn’t dominate
+                const maxH = window.innerHeight * 0.35;
+                const widthScale  = availableW / viewport1.width;
+                const heightScale = maxH / viewport1.height;
+
+                baseScale = Math.min(widthScale, heightScale);
                 scale = baseScale;
-              }
+                }
 
               function renderPage(){
                 if (rendering) return;
                 rendering = true;
                 pdfDoc.getPage(pageNum).then(page=>{
-                  if (baseScale===1) fitToWidth(page);
-                  const viewport = page.getViewport({ scale });
+                if (baseScale===1) fitToCard(page);
+                const viewport = page.getViewport({ scale });
                   canvas.style.width = Math.round(viewport.width)+'px';
                   canvas.style.height = Math.round(viewport.height)+'px';
                   canvas.width = Math.round(viewport.width*dpr);
