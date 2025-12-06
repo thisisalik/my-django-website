@@ -6,14 +6,14 @@
   /* Make this page a bit tighter vertically */
   .container {
     min-height: auto;
-    padding-bottom: 12px; /* was 40px – brings Logout closer to Like/Skip */
+    padding-bottom: 12px;
   }
 
-  /* Event card styling – shorter + cleaner */
+  /* Event card – short & compact */
   .event-card {
-    margin: 6px 0 8px;          /* was 10px 0 14px */
-    padding: 8px 10px;          /* was 10px 14px */
-    font-size: 0.9rem;          /* slightly smaller */
+    margin: 6px 0 8px;
+    padding: 8px 10px;
+    font-size: 0.9rem;
   }
   .event-card form {
     margin: 0;
@@ -23,7 +23,7 @@
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 4px;        /* a bit tighter */
+    margin-bottom: 4px;
   }
   .event-toggle-row label {
     display: flex;
@@ -39,14 +39,12 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin: 2px 0 0;           /* no extra bottom space */
+    margin: 2px 0 0;
   }
-  /* Hide explanation line under the blue line */
   .event-note {
-    display: none;
+    display: none; /* hide explanation line */
   }
 
-  /* Soft pill buttons only inside the event card */
   .event-card .btn {
     border-radius: 999px;
     padding: 5px 14px;
@@ -68,17 +66,19 @@
     margin: 10px 0 10px;
   }
 
-  /* Letter card (keep image size readable) */
+  /* Letter card – SAME height for image/text/pdf */
   .letter-card {
     background:#fff;
     border:1px solid #e5e7eb;
     border-radius:18px;
     box-shadow:0 8px 24px rgba(15,23,42,0.06);
     padding:14px 16px;
-    margin:10px 0 14px;
+    margin:10px 0 10px;
+    max-height: 460px;      /* 🔴 key line: cap total card height */
+    overflow-y: auto;       /* scroll inside when content is longer */
   }
 
-  /* Image letters – keep big & readable like before */
+  /* Image letters – keep big & readable */
   .letter-card img.clickable-image {
     width: 100%;
     max-height: 400px;
@@ -86,14 +86,19 @@
     object-fit: contain;
   }
 
-  /* PDF viewer – compact */
+  /* Text letters – scroll inside if long */
+  .letter-body {
+    max-height: 400px;      /* same content area as image */
+    overflow-y: auto;
+  }
+
+  /* PDF viewer – lives inside the same capped letter-card */
   .pdf-card {
-    border:1px solid #e5e7eb;
-    border-radius:18px;
-    padding:10px 12px;
-    background:#ffffff;
-    box-shadow:0 8px 24px rgba(15,23,42,0.06);
-    margin:8px 0 12px;
+    border: none;           /* card border already on .letter-card */
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    margin: 0;
   }
   .pdf-toolbar {
     display:flex;
@@ -124,7 +129,7 @@
   }
   .pdf-canvas-wrap {
     width:100%;
-    max-height:230px;
+    max-height:400px;       /* same content area as image/text */
     overflow:auto;
     border-radius:12px;
     background:#fafafa;
@@ -136,14 +141,13 @@
   .pdf-canvas-wrap::-webkit-scrollbar-thumb { background:#d4d4d8;border-radius:999px; }
 
   @media (max-width:480px){
-    .pdf-canvas-wrap { max-height:210px; }
     .event-card { padding:7px 9px; }
   }
 
-  /* Like / Skip buttons – pull Logout closer by removing bottom gap */
+  /* Like / Skip – keep Logout close */
   .browse-actions {
     margin-top: 8px;
-    margin-bottom: 0; /* was 10px */
+    margin-bottom: 0;
   }
 </style>
 
@@ -170,7 +174,6 @@
         <a href="{% url 'join_event' %}" class="btn btn-secondary">Change event</a>
       </div>
 
-      {# explanation removed visually via CSS (.event-note { display:none; }) #}
       <p class="event-note">
         You can switch the event anytime — this only changes which letters you see.
       </p>
