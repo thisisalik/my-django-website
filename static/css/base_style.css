@@ -10,7 +10,8 @@ body {
   font-family: system-ui, sans-serif;
   font-size: clamp(16px, 2.3vw, 18px);
   line-height: 1.5;
-  background-color: #fff;
+  /* soft turtle-ish gradient like register page */
+  background: radial-gradient(circle at top, #e6f6f0 0, #f9fbff 55%, #ffffff 100%);
   display: block;
 }
 
@@ -40,7 +41,7 @@ body {
   margin-bottom: 12px;
 }
 
-/* ✅ Link + button style */
+/* ✅ Link + button style (generic) */
 .button,
 button {
   display: inline-block;
@@ -53,6 +54,49 @@ button {
   border: none;
   background-color: #007bff;
   color: white;
+}
+
+/* === Global form controls – match register page === */
+
+form input[type="text"],
+form input[type="email"],
+form input[type="password"],
+form select,
+form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  padding: 9px 11px;
+  margin-top: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background-color: #fff;
+}
+
+form textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+/* primary pill button used on register + can be reused elsewhere */
+.primary-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(37,99,235,0.3);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 /* ✅ Mobile tweaks */
@@ -248,7 +292,7 @@ hr { margin: 14px 0; }
   margin-top: 14px;
 }
 
-/* pill-style buttons (will only affect elements that use these classes) */
+/* pill-style buttons helpers (used in login etc.) */
 .btn {
   display: inline-block;
   border-radius: 999px;
