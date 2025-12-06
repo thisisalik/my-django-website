@@ -12,7 +12,7 @@
     .nav {
       display:flex; align-items:center; gap:12px;
       padding:10px 14px; background:#fff; border-bottom:1px solid #eee;
-      overflow-x:auto;                /* allow horizontal scroll on small screens */
+      overflow-x:auto;                /* allow horizontal scroll on small screens if ever needed */
       -webkit-overflow-scrolling:touch;
       white-space:nowrap;
     }
@@ -40,10 +40,12 @@
       border:1px solid #e5e7eb;
     }
 
+    /* 🔹 Mobile nav: icons only so everything fits without swiping */
     @media (max-width:560px){
-      .nav { justify-content:flex-start; gap:10px; }
-      .nav-group { gap:6px; }
-      .nav-item { padding:10px; }
+      .nav { justify-content:flex-start; gap:8px; padding:8px 10px; }
+      .nav-group { gap:4px; }
+      .nav-item { padding:8px; }
+      .nav-item .label { display:none; }  /* hide text labels, keep emojis/avatar */
     }
 
     .container { max-width:980px; margin:16px auto; padding:0 16px; }
