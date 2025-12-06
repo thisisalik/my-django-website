@@ -20,9 +20,9 @@ body {
   width: 92%;
   max-width: 700px;
   margin: 0 auto;
-  padding: 16px 10px;
+  padding: 16px 10px 24px;   /* small padding at bottom */
   box-sizing: border-box;
-  min-height: calc(100vh - 80px);
+  /* removed min-height so there is no big white gap above Logout */
 }
 
 /* ✅ Section spacing */

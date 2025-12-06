@@ -3,183 +3,186 @@
 
 {% block content %}
 <style>
-  /* Make content + logout sit closer together on this page */
-  .container {
-    max-width: 960px;
-    margin: 12px auto 0;
-    padding: 0 16px 4px;
-  }
-  .logout-bar {
-    margin-top: 10px !important;
-    margin-bottom: 10px !important;
-  }
-
-  /* Compact event card */
+  /* event card at the top */
   .event-card {
     background: #ffffff;
     border-radius: 18px;
-    padding: 10px 14px 12px;
-    margin: 10px 0 6px;
+    padding: 10px 14px;
+    margin: 8px 0 14px;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
     border: 1px solid #e5e7eb;
+    font-size: 0.95rem;
   }
   .event-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
   }
-  .event-row label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    font-size: 0.95rem;
+  .event-main {
+    display:flex;
+    flex-direction:column;
+    gap:4px;
   }
-  .event-name {
+  .event-title {
+    font-size: 0.98rem;
     font-weight: 600;
   }
+  .event-name {
+    font-weight: 700;
+    font-size: 1rem;
+  }
   .event-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 6px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
   }
-  .event-chip {
-    border-radius: 999px;
-    padding: 6px 14px;
-    border: none;
-    cursor: pointer;
-    font-size: 0.9rem;
-  }
-  .event-chip.primary {
-    background: #111827;
-    color: #fff;
-  }
-  .event-chip.secondary {
-    background: #e5e7eb;
-    color: #111827;
-    text-decoration: none;
+  .event-buttons-row {
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
   }
   .event-note {
-    margin-top: 4px;
-    font-size: 0.82rem;
-    color: #4b5563;
+    margin:4px 0 0;
+    color:#6b7280;
+    font-size:0.85rem;
+    text-align:right;
+  }
+  .event-chip {
+    border-radius:999px;
+    padding:8px 14px;
+    border:none;
+    font-weight:600;
+    cursor:pointer;
+    font-size:0.9rem;
+  }
+  .event-chip-primary {
+    background:#020617;
+    color:#fff;
+  }
+  .event-chip-secondary {
+    background:#e5e7eb;
+    color:#111827;
   }
 
-  /* Letter card already has base style (.letter-card), just tighten a bit */
-  .letter-card {
+  @media (max-width: 520px) {
+    .event-row {
+      flex-direction:column;
+      align-items:flex-start;
+    }
+    .event-note {
+      text-align:left;
+    }
+    .event-actions {
+      width:100%;
+      align-items:flex-start;
+    }
+    .event-buttons-row {
+      justify-content:flex-start;
+    }
+  }
+
+  /* tighten heading above card */
+  h2 {
     margin: 10px 0 8px;
   }
 
-  /* Make image letters nice and big again */
-  .letter-image-wrapper {
-    max-width: 100%;
-    margin-top: 6px;
-  }
-  .letter-image-wrapper img {
-    width: 100%;
-    max-height: 380px;   /* similar to what you had before */
-    border-radius: 14px;
-    object-fit: contain;
+  /* keep letter card same look but not crazy tall */
+  .letter-card {
+    margin-top: 10px;
   }
 
-  /* Like / Skip buttons row */
-  .browse-actions {
-    display: flex;
-    justify-content: center;
-    gap: 18px;
-    margin: 10px 0 0;
-  }
-
-  /* PDF viewer – shorter + cleaner */
+  /* PDF viewer tweaks – shorter and no massive white area */
   .pdf-card {
     border: 1px solid #e5e7eb;
     border-radius: 16px;
-    padding: 8px 10px 10px;
+    padding: 8px 10px;
+    background:#ffffff;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
-    background: #ffffff;
   }
   .pdf-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 4px;
-    font-size: 13px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:flex-start;
+    margin-bottom:8px;
   }
   .pdf-btn {
-    border: 1px solid #d1d5db;
-    background: #f3f4f6;
-    padding: 4px 8px;
-    border-radius: 9px;
-    cursor: pointer;
-    font-size: 12px;
-    line-height: 1;
+    border:1px solid #d1d5db;
+    background:#f3f4f6;
+    padding:5px 9px;
+    border-radius:9px;
+    cursor:pointer;
+    line-height:1;
+    font-size:13px;
   }
   .pdf-btn:disabled {
-    opacity: .4;
-    cursor: not-allowed;
+    opacity:.35;
+    cursor:not-allowed;
   }
   .pdf-badge {
-    font-size: 12px;
-    min-width: 46px;
-    text-align: center;
-    color: #374151;
+    font-size:12px;
+    color:#4b5563;
+    min-width:48px;
+    text-align:center;
   }
   .pdf-canvas-wrap {
-    width: 100%;
-    max-height: 32vh;          /* MUCH shorter */
-    overflow: auto;
-    border-radius: 10px;
-    background: #f9fafb;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-  }
-  .pdf-canvas-wrap::-webkit-scrollbar {
-    height: 6px;
-    width: 6px;
-  }
-  .pdf-canvas-wrap::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 999px;
+    width:100%;
+    max-height:46vh;          /* shorter than before so the page fits better */
+    overflow:auto;            /* still scrollable if needed */
+    border-radius:10px;
+    background:#fafafa;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
   }
 
-  @media (max-width: 480px) {
-    .pdf-canvas-wrap {
-      max-height: 28vh;        /* even shorter on small phones */
-    }
+  @media (max-width:520px){
+    .pdf-card { padding:6px 8px; border-radius:14px; }
+    .pdf-toolbar { gap:6px; margin-bottom:6px; }
+    .pdf-btn { padding:4px 8px; font-size:12px; }
+    .pdf-badge { font-size:11px; min-width:42px; }
+    .pdf-canvas-wrap { max-height:42vh; }
+  }
+
+  /* Like / Skip row – keep fairly close to the card */
+  .react-row {
+    margin: 12px 0 0;
   }
 </style>
 
 {% if request.user.is_authenticated and request.user.profile.active_event %}
-  <div class="event-card">
-    <form method="post" action="{% url 'toggle_event_mode' %}">
-      {% csrf_token %}
-      <div class="event-row">
-        <label>
+  <form method="post"
+        action="{% url 'toggle_event_mode' %}"
+        class="event-card">
+    {% csrf_token %}
+    <div class="event-row">
+      <div class="event-main">
+        <label class="event-title">
           <input
             type="checkbox"
             name="limit_to_event_pool"
             value="1"
             {% if request.user.profile.limit_to_event_pool %}checked{% endif %}
           >
-          <span>Only show letters from the event:</span>
-          <span class="event-name">{{ request.user.profile.active_event.name }}</span>
+          Only show letters from the event:
         </label>
+        <span class="event-name">{{ request.user.profile.active_event.name }}</span>
       </div>
 
       <div class="event-actions">
-        <button type="submit" class="event-chip primary">Update</button>
-        <a href="{% url 'join_event' %}" class="event-chip secondary">Change event</a>
+        <div class="event-buttons-row">
+          <button type="submit" class="event-chip event-chip-primary">Update</button>
+          <a href="{% url 'join_event' %}" class="event-chip event-chip-secondary">Change event</a>
+        </div>
+        <p class="event-note">
+          You can switch the event anytime — this only changes which letters you see.
+        </p>
       </div>
-
-      <p class="event-note">
-        You can switch the event anytime — this only affects which letters you see.
-      </p>
-    </form>
-  </div>
+    </div>
+  </form>
 {% endif %}
 
 <h2>Browse Letters 💌</h2>
@@ -188,35 +191,34 @@
   <div class="letter-card">
     {% if letter.letter_type == "text" %}
       {% if letter.text_content %}
-        <div class="letter-body">
-          📝 {{ letter.text_content|linebreaksbr }}
+        <div class="letter-card">
+          <div class="letter-body">
+            📝 {{ letter.text_content|linebreaksbr }}
+          </div>
         </div>
       {% else %}
-        <em>No text available.</em>
+        <div class="letter-card"><em>No text available.</em></div>
       {% endif %}
 
     {% elif letter.letter_type == "image" %}
-      <div class="letter-image-wrapper">
-        <div style="position: relative; max-width: 100%; margin-top: 4px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <div style="position: relative; max-width: 400px; margin-top: 10px;">
           {% with group_id="browse" %}
             {% with images=letter.images.all %}
               {% for image in images %}
                 <div style="display: {% if forloop.first %}block{% else %}none{% endif %};"
                      class="slide-group-{{ group_id }}" id="slide-{{ group_id }}-{{ forloop.counter }}">
                   <img src="{{ image.image.url }}" alt="Letter Image"
-                       class="clickable-image">
+                       class="clickable-image"
+                       style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain;">
                 </div>
               {% endfor %}
 
               {% if images|length > 1 %}
                 <button onclick="prevSlide('{{ group_id }}', {{ images|length }})" id="prevBtn-{{ group_id }}"
-                        style="position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
-                               background: rgba(0,0,0,0.55); color: white; border: none;
-                               padding: 8px 10px; border-radius: 999px;">⟵</button>
+                        style="position: absolute; left: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">&larr;</button>
                 <button onclick="nextSlide('{{ group_id }}', {{ images|length }})" id="nextBtn-{{ group_id }}"
-                        style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-                               background: rgba(0,0,0,0.55); color: white; border: none;
-                               padding: 8px 10px; border-radius: 999px;">⟶</button>
+                        style="position: absolute; right: 0; top: 45%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 8px;">&rarr;</button>
               {% endif %}
             {% endwith %}
           {% endwith %}
@@ -244,7 +246,7 @@
           </div>
         </div>
 
-        <!-- Load pdf.js once -->
+        {# Load pdf.js once if not present #}
         <script>
           (function ensurePdfJs(){
             if (window.pdfjsLib) return;
@@ -282,13 +284,8 @@
               const wrap = card.querySelector('.pdf-canvas-wrap');
               const available = wrap.clientWidth - 2;
               const viewport1 = page.getViewport({ scale:1 });
-
-              // Limit height so PDF block isn't super tall
-              const maxH   = (window.innerHeight || 700) * 0.33;  // ≈ 33vh
-              const byW    = available / viewport1.width;
-              const byH    = maxH / viewport1.height;
-              baseScale    = Math.min(byW, byH);
-              scale        = baseScale;
+              baseScale = available / viewport1.width;
+              scale = baseScale;
             }
 
             function renderPage(){
@@ -297,9 +294,9 @@
               pdfDoc.getPage(pageNum).then(page=>{
                 if (baseScale===1) fitToWidth(page);
                 const viewport = page.getViewport({ scale });
-                canvas.style.width  = Math.round(viewport.width)+'px';
+                canvas.style.width = Math.round(viewport.width)+'px';
                 canvas.style.height = Math.round(viewport.height)+'px';
-                canvas.width  = Math.round(viewport.width*dpr);
+                canvas.width = Math.round(viewport.width*dpr);
                 canvas.height = Math.round(viewport.height*dpr);
                 const transform = dpr!==1 ? [dpr,0,0,dpr,0,0] : null;
                 page.render({ canvasContext: ctx, viewport, transform }).promise.finally(()=>{
@@ -346,14 +343,13 @@
     {% endif %}
   </div>
 
-  <div class="browse-actions">
-    <form method="post" action="{% url 'react_to_letter' letter.id %}">
-      {% csrf_token %}
-      <button name="liked" value="true" class="btn btn-primary">❤️ Like</button>
-      <button name="liked" value="false" class="btn btn-primary" style="background:#2563eb;">❌ Skip</button>
-    </form>
-  </div>
-
+  <form method="post"
+        action="{% url 'react_to_letter' letter.id %}"
+        class="react-row">
+    {% csrf_token %}
+    <button name="liked" value="true" class="btn btn-primary">❤️ Like</button>
+    <button name="liked" value="false" class="btn btn-primary" style="margin-left: 10px;">❌ Skip</button>
+  </form>
 {% else %}
   <p>No more letters available. Try again later.</p>
 {% endif %}
