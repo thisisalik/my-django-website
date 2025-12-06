@@ -3,103 +3,98 @@
 
 {% block content %}
 <style>
-  /* event card at the top */
+  /* Make this page a bit tighter vertically */
+  .container {
+    min-height: auto;
+    padding-bottom: 40px;
+  }
+
+  /* Event card styling – shorter + cleaner */
   .event-card {
-    background: #ffffff;
-    border-radius: 18px;
+    margin: 10px 0 14px;
     padding: 10px 14px;
-    margin: 8px 0 14px;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
-    border: 1px solid #e5e7eb;
     font-size: 0.95rem;
   }
-  .event-row {
+  .event-card form {
+    margin: 0;
+  }
+  .event-toggle-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
   }
-  .event-main {
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-  }
-  .event-title {
-    font-size: 0.98rem;
+  .event-toggle-row label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-weight: 600;
+    margin: 0;
   }
-  .event-name {
-    font-weight: 700;
-    font-size: 1rem;
+  .event-toggle-row strong {
+    margin-left: 4px;
   }
   .event-actions {
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-  }
-  .event-buttons-row {
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    justify-content:flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 4px 0 6px;
   }
   .event-note {
-    margin:4px 0 0;
-    color:#6b7280;
-    font-size:0.85rem;
-    text-align:right;
-  }
-  .event-chip {
-    border-radius:999px;
-    padding:8px 14px;
-    border:none;
-    font-weight:600;
-    cursor:pointer;
-    font-size:0.9rem;
-  }
-  .event-chip-primary {
-    background:#020617;
-    color:#fff;
-  }
-  .event-chip-secondary {
-    background:#e5e7eb;
-    color:#111827;
+    margin: 0;
+    font-size: 0.82rem;
+    color: #4b5563;
   }
 
-  @media (max-width: 520px) {
-    .event-row {
-      flex-direction:column;
-      align-items:flex-start;
-    }
-    .event-note {
-      text-align:left;
-    }
-    .event-actions {
-      width:100%;
-      align-items:flex-start;
-    }
-    .event-buttons-row {
-      justify-content:flex-start;
-    }
+  /* Soft pill buttons only inside the event card */
+  .event-card .btn {
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+  }
+  .event-card .btn-primary {
+    background: #020617;
+    color: #fff;
+  }
+  .event-card .btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
   }
 
-  /* tighten heading above card */
+  /* Browse title spacing */
   h2 {
-    margin: 10px 0 8px;
+    margin: 10px 0 10px;
   }
 
-  /* keep letter card same look but not crazy tall */
+  /* Letter card (keep image size readable) */
   .letter-card {
-    margin-top: 10px;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:18px;
+    box-shadow:0 8px 24px rgba(15,23,42,0.06);
+    padding:14px 16px;
+    margin:10px 0 14px;
   }
 
-  /* PDF viewer tweaks – shorter and no massive white area */
+  /* Image letters – keep big & readable like before */
+  .letter-card img.clickable-image {
+    width: 100%;
+    max-height: 400px;   /* back to the earlier height */
+    border-radius: 14px;
+    object-fit: contain;
+  }
+
+  /* PDF viewer – shorter so page fits */
   .pdf-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-    padding: 8px 10px;
+    border:1px solid #e5e7eb;
+    border-radius:18px;
+    padding:10px 12px;
     background:#ffffff;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    box-shadow:0 8px 24px rgba(15,23,42,0.06);
+    margin:8px 0 12px;
   }
   .pdf-toolbar {
     display:flex;
@@ -107,13 +102,13 @@
     gap:8px;
     flex-wrap:wrap;
     justify-content:flex-start;
-    margin-bottom:8px;
+    margin-bottom:6px;
   }
   .pdf-btn {
-    border:1px solid #d1d5db;
+    border:1px solid #d4d4d8;
     background:#f3f4f6;
     padding:5px 9px;
-    border-radius:9px;
+    border-radius:999px;
     cursor:pointer;
     line-height:1;
     font-size:13px;
@@ -124,65 +119,63 @@
   }
   .pdf-badge {
     font-size:12px;
-    color:#4b5563;
-    min-width:48px;
+    color:#444;
+    min-width:46px;
     text-align:center;
   }
   .pdf-canvas-wrap {
     width:100%;
-    max-height:46vh;          /* shorter than before so the page fits better */
-    overflow:auto;            /* still scrollable if needed */
-    border-radius:10px;
+    max-height:230px;         /* ⬅️ much shorter */
+    overflow:auto;
+    border-radius:12px;
     background:#fafafa;
     display:flex;
     justify-content:center;
     align-items:flex-start;
   }
+  .pdf-canvas-wrap::-webkit-scrollbar { height:6px;width:6px; }
+  .pdf-canvas-wrap::-webkit-scrollbar-thumb { background:#d4d4d8;border-radius:999px; }
 
-  @media (max-width:520px){
-    .pdf-card { padding:6px 8px; border-radius:14px; }
-    .pdf-toolbar { gap:6px; margin-bottom:6px; }
-    .pdf-btn { padding:4px 8px; font-size:12px; }
-    .pdf-badge { font-size:11px; min-width:42px; }
-    .pdf-canvas-wrap { max-height:42vh; }
+  @media (max-width:480px){
+    .pdf-canvas-wrap { max-height:210px; }
+    .event-card { padding:9px 12px; }
   }
 
-  /* Like / Skip row – keep fairly close to the card */
-  .react-row {
-    margin: 12px 0 0;
+  /* Like / Skip buttons already look good – just nudge margin */
+  .browse-actions {
+    margin-top: 8px;
+    margin-bottom: 10px;
   }
 </style>
 
 {% if request.user.is_authenticated and request.user.profile.active_event %}
-  <form method="post"
-        action="{% url 'toggle_event_mode' %}"
-        class="event-card">
-    {% csrf_token %}
-    <div class="event-row">
-      <div class="event-main">
-        <label class="event-title">
+  <div class="t-card event-card">
+    <form method="post" action="{% url 'toggle_event_mode' %}">
+      {% csrf_token %}
+
+      <div class="event-toggle-row">
+        <label>
           <input
             type="checkbox"
             name="limit_to_event_pool"
             value="1"
             {% if request.user.profile.limit_to_event_pool %}checked{% endif %}
           >
-          Only show letters from the event:
+          <span>Only show letters from the event:</span>
         </label>
-        <span class="event-name">{{ request.user.profile.active_event.name }}</span>
+        <strong>{{ request.user.profile.active_event.name }}</strong>
       </div>
 
       <div class="event-actions">
-        <div class="event-buttons-row">
-          <button type="submit" class="event-chip event-chip-primary">Update</button>
-          <a href="{% url 'join_event' %}" class="event-chip event-chip-secondary">Change event</a>
-        </div>
-        <p class="event-note">
-          You can switch the event anytime — this only changes which letters you see.
-        </p>
+        <button type="submit" class="btn btn-primary">Update</button>
+        <a href="{% url 'join_event' %}" class="btn btn-secondary">Change event</a>
       </div>
-    </div>
-  </form>
+
+      <p class="event-note">
+        You can switch the event anytime — this only changes which letters you see.
+      </p>
+    </form>
+  </div>
 {% endif %}
 
 <h2>Browse Letters 💌</h2>
@@ -191,26 +184,23 @@
   <div class="letter-card">
     {% if letter.letter_type == "text" %}
       {% if letter.text_content %}
-        <div class="letter-card">
-          <div class="letter-body">
-            📝 {{ letter.text_content|linebreaksbr }}
-          </div>
+        <div class="letter-body">
+          📝 {{ letter.text_content|linebreaksbr }}
         </div>
       {% else %}
-        <div class="letter-card"><em>No text available.</em></div>
+        <em>No text available.</em>
       {% endif %}
 
     {% elif letter.letter_type == "image" %}
       <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-        <div style="position: relative; max-width: 400px; margin-top: 10px;">
+        <div style="position: relative; max-width: 100%; margin-top: 4px;">
           {% with group_id="browse" %}
             {% with images=letter.images.all %}
               {% for image in images %}
                 <div style="display: {% if forloop.first %}block{% else %}none{% endif %};"
                      class="slide-group-{{ group_id }}" id="slide-{{ group_id }}-{{ forloop.counter }}">
                   <img src="{{ image.image.url }}" alt="Letter Image"
-                       class="clickable-image"
-                       style="width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain;">
+                       class="clickable-image">
                 </div>
               {% endfor %}
 
@@ -233,7 +223,7 @@
             <span class="pdf-badge" id="pageLabel-{{ gid }}">1 / 1</span>
             <button type="button" class="pdf-btn" id="next-{{ gid }}">▶</button>
 
-            <span style="width:8px;"></span>
+            <span style="width:10px;"></span>
 
             <button type="button" class="pdf-btn" id="zoomOut-{{ gid }}">−</button>
             <span class="pdf-badge" id="zoomLabel-{{ gid }}">100%</span>
@@ -270,7 +260,7 @@
             const pageLabel  = document.getElementById('pageLabel-{{ gid }}');
             const dpr        = window.devicePixelRatio || 1;
 
-            let pdfDoc=null, pageNum=1, pageCount=1, baseScale=1, scale=1, rendering=false;
+            let pdfDoc=null, pageNum=1, pageCount=1, baseScale=1, scale=0.9, rendering=false;
 
             function updateLabels(){
               zoomLabel.textContent = Math.round(scale*100) + '%';
@@ -285,14 +275,14 @@
               const available = wrap.clientWidth - 2;
               const viewport1 = page.getViewport({ scale:1 });
               baseScale = available / viewport1.width;
-              scale = baseScale;
+              scale = baseScale * 0.9;   // a bit smaller so height stays compact
             }
 
             function renderPage(){
-              if (rendering) return;
+              if (rendering || !pdfDoc) return;
               rendering = true;
               pdfDoc.getPage(pageNum).then(page=>{
-                if (baseScale===1) fitToWidth(page);
+                fitToWidth(page);
                 const viewport = page.getViewport({ scale });
                 canvas.style.width = Math.round(viewport.width)+'px';
                 canvas.style.height = Math.round(viewport.height)+'px';
@@ -311,10 +301,10 @@
                 renderPage();
                 const card = document.getElementById('pdfCard-{{ gid }}');
                 if ('ResizeObserver' in window){
-                  const ro = new ResizeObserver(()=>{ baseScale=1; renderPage(); });
+                  const ro = new ResizeObserver(()=>{ renderPage(); });
                   ro.observe(card);
                 } else {
-                  window.addEventListener('resize', ()=>{ baseScale=1; renderPage(); });
+                  window.addEventListener('resize', renderPage);
                 }
               }).catch(console.error);
             }
@@ -334,7 +324,7 @@
             // controls
             zoomInBtn.addEventListener('click', ()=>{ scale=Math.min(scale+0.15,4); renderPage(); });
             zoomOutBtn.addEventListener('click', ()=>{ scale=Math.max(scale-0.15,0.4); renderPage(); });
-            fitBtn.addEventListener('click', ()=>{ baseScale=1; renderPage(); });
+            fitBtn.addEventListener('click', ()=>{ renderPage(); });
             prevBtn.addEventListener('click', ()=>{ if(pageNum>1){ pageNum--; renderPage(); } });
             nextBtn.addEventListener('click', ()=>{ if(pageNum<pageCount){ pageNum++; renderPage(); } });
           })();
@@ -343,12 +333,10 @@
     {% endif %}
   </div>
 
-  <form method="post"
-        action="{% url 'react_to_letter' letter.id %}"
-        class="react-row">
+  <form method="post" action="{% url 'react_to_letter' letter.id %}" class="browse-actions">
     {% csrf_token %}
     <button name="liked" value="true" class="btn btn-primary">❤️ Like</button>
-    <button name="liked" value="false" class="btn btn-primary" style="margin-left: 10px;">❌ Skip</button>
+    <button name="liked" value="false" class="btn btn-primary" style="margin-left: 10px; background:#2563eb;">❌ Skip</button>
   </form>
 {% else %}
   <p>No more letters available. Try again later.</p>
