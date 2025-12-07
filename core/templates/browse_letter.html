@@ -11,7 +11,7 @@
 }
 
 
-/* ========== EVENT BOX (SMALL, SECONDARY – SAME AS BEFORE) ========== */
+/* ========== EVENT BOX (5% SHORTER) ========== */
 
 .t-card.event-card {
   background: rgba(255,255,255,0.7);
@@ -19,7 +19,7 @@
   border: 1px dashed #d4d4d8;
   box-shadow: none;
   margin: 4px 0 6px;
-  padding: 6px 10px;
+  padding: 4px 10px;          /* was 6px → ~ a bit shorter */
   font-size: 0.8rem;
 }
 
@@ -68,7 +68,7 @@ h2 {
 }
 
 
-/* ========== LETTER CARD (5% SMALLER, IMAGE/TEXT/PDF FIT INSIDE) ========== */
+/* ========== LETTER CARD (FIXED SIZE, SAME FOR ALL TYPES) ========== */
 
 .letter-card {
   background:#fff;
@@ -78,37 +78,48 @@ h2 {
   padding:12px 14px;
   margin:8px 0;
 
-  /* no fixed min-height → card hugs content, no extra white space */
+  height: 55vh;               /* 🔹 all letter cards same height */
   display: flex;
   flex-direction: column;
 }
 
+/* slightly smaller on short screens */
+@media (max-height: 750px) {
+  .letter-card { height: 50vh; }
+}
+
 /* TEXT LETTER */
 .letter-body {
-  flex-grow: 1;
-  max-height: 37vh;          /* was 39vh → ~5% smaller */
+  flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-right: 6px;
 }
 
-/* IMAGE LETTER */
-.letter-card img.clickable-image {
+/* IMAGE LETTER – wrapper fills card, image fills wrapper */
+.letter-image-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.letter-image-wrap img.clickable-image {
   width: 100%;
-  max-height: 40vh;          /* was 45vh → ~5% smaller */
+  height: 100%;              /* fill card vertically */
+  object-fit: contain;       /* no cutting, just fit inside */
   border-radius: 14px;
-  object-fit: contain;
   display: block;
 }
 
-/* PDF LETTER */
+/* PDF LETTER – canvas area fills card */
 .pdf-card {
   border: none;
   padding: 0;
   background: transparent;
   box-shadow: none;
   margin: 0;
-  flex-grow: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -143,21 +154,13 @@ h2 {
 
 .pdf-canvas-wrap {
   width:100%;
-  max-height: 38vh;          /* fits inside card; ~5% smaller than before */
+  flex: 1;                   /* fill remaining card height */
   overflow:auto;
   border-radius:12px;
   background:#fafafa;
   display:flex;
   justify-content:center;
   align-items:flex-start;
-}
-
-
-/* SHORT DEVICES */
-@media (max-height: 750px) {
-  .letter-body { max-height: 41vh; }
-  .pdf-canvas-wrap,
-  .letter-card img.clickable-image { max-height: 44vh; }
 }
 
 
@@ -207,7 +210,7 @@ h2 {
     {% endif %}
 
   {% elif letter.letter_type == "image" %}
-    <div style="position: relative;">
+    <div class="letter-image-wrap" style="position: relative;">
       {% with group_id="browse" %}
       {% with images=letter.images.all %}
         {% for image in images %}
@@ -219,10 +222,10 @@ h2 {
 
         {% if images|length > 1 %}
           <button onclick="prevSlide('{{ group_id }}', {{ images|length }})" id="prevBtn-{{ group_id }}"
-                  style="position:absolute;left:0;top:45%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:white;border:none;padding:8px;">←</button>
+                  style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:white;border:none;padding:8px;">←</button>
 
           <button onclick="nextSlide('{{ group_id }}', {{ images|length }})" id="nextBtn-{{ group_id }}"
-                  style="position:absolute;right:0;top:45%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:white;border:none;padding:8px;">→</button>
+                  style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:white;border:none;padding:8px;">→</button>
         {% endif %}
       {% endwith %}
       {% endwith %}
