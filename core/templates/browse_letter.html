@@ -11,7 +11,7 @@
 }
 
 
-/* ========== EVENT BOX (SMALL, SECONDARY) – SAME AS NOW ========== */
+/* ========== EVENT BOX (SMALL, SECONDARY – SAME AS BEFORE) ========== */
 
 .t-card.event-card {
   background: rgba(255,255,255,0.7);
@@ -68,7 +68,7 @@ h2 {
 }
 
 
-/* ========== LETTER CARD (25% SMALLER, CONTENT FITS INSIDE) ========== */
+/* ========== LETTER CARD (5% SMALLER, IMAGE/TEXT/PDF FIT INSIDE) ========== */
 
 .letter-card {
   background:#fff;
@@ -78,7 +78,7 @@ h2 {
   padding:12px 14px;
   margin:8px 0;
 
-  min-height: 45vh;          /* was 60vh → 25% smaller */
+  /* no fixed min-height → card hugs content, no extra white space */
   display: flex;
   flex-direction: column;
 }
@@ -86,7 +86,7 @@ h2 {
 /* TEXT LETTER */
 .letter-body {
   flex-grow: 1;
-  max-height: 39vh;          /* ~25% smaller than 52vh */
+  max-height: 37vh;          /* was 39vh → ~5% smaller */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-right: 6px;
@@ -95,7 +95,7 @@ h2 {
 /* IMAGE LETTER */
 .letter-card img.clickable-image {
   width: 100%;
-  max-height: 45vh;          /* match card height */
+  max-height: 40vh;          /* was 45vh → ~5% smaller */
   border-radius: 14px;
   object-fit: contain;
   display: block;
@@ -143,7 +143,7 @@ h2 {
 
 .pdf-canvas-wrap {
   width:100%;
-  max-height: 41vh;          /* fits inside the card */
+  max-height: 38vh;          /* fits inside card; ~5% smaller than before */
   overflow:auto;
   border-radius:12px;
   background:#fafafa;
@@ -155,10 +155,9 @@ h2 {
 
 /* SHORT DEVICES */
 @media (max-height: 750px) {
-  .letter-card { min-height: 50vh; }      /* was 65vh */
-  .letter-body { max-height: 43vh; }      /* was 57vh */
+  .letter-body { max-height: 41vh; }
   .pdf-canvas-wrap,
-  .letter-card img.clickable-image { max-height: 50vh; }
+  .letter-card img.clickable-image { max-height: 44vh; }
 }
 
 
