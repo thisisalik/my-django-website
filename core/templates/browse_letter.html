@@ -11,7 +11,7 @@
 }
 
 
-/* ========== EVENT BOX (SMALL, SECONDARY) ========== */
+/* ========== EVENT BOX (SMALL, SECONDARY) – SAME AS NOW ========== */
 
 .t-card.event-card {
   background: rgba(255,255,255,0.7);
@@ -68,7 +68,7 @@ h2 {
 }
 
 
-/* ========== LETTER CARD (MAIN CONTENT, FILLS SCREEN) ========== */
+/* ========== LETTER CARD (25% SMALLER, CONTENT FITS INSIDE) ========== */
 
 .letter-card {
   background:#fff;
@@ -78,7 +78,7 @@ h2 {
   padding:12px 14px;
   margin:8px 0;
 
-  min-height: 60vh;
+  min-height: 45vh;          /* was 60vh → 25% smaller */
   display: flex;
   flex-direction: column;
 }
@@ -86,7 +86,7 @@ h2 {
 /* TEXT LETTER */
 .letter-body {
   flex-grow: 1;
-  max-height: 52vh;
+  max-height: 39vh;          /* ~25% smaller than 52vh */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-right: 6px;
@@ -95,9 +95,10 @@ h2 {
 /* IMAGE LETTER */
 .letter-card img.clickable-image {
   width: 100%;
-  max-height: 60vh;
+  max-height: 45vh;          /* match card height */
   border-radius: 14px;
   object-fit: contain;
+  display: block;
 }
 
 /* PDF LETTER */
@@ -142,7 +143,7 @@ h2 {
 
 .pdf-canvas-wrap {
   width:100%;
-  max-height: 55vh;
+  max-height: 41vh;          /* fits inside the card */
   overflow:auto;
   border-radius:12px;
   background:#fafafa;
@@ -154,10 +155,10 @@ h2 {
 
 /* SHORT DEVICES */
 @media (max-height: 750px) {
-  .letter-card { min-height: 65vh; }
-  .letter-body { max-height: 57vh; }
+  .letter-card { min-height: 50vh; }      /* was 65vh */
+  .letter-body { max-height: 43vh; }      /* was 57vh */
   .pdf-canvas-wrap,
-  .letter-card img.clickable-image { max-height: 65vh; }
+  .letter-card img.clickable-image { max-height: 50vh; }
 }
 
 
@@ -197,162 +198,189 @@ h2 {
 {% if letter %}
 <div class="letter-card">
 
-{% if letter.letter_type == "text" %}
-  {% if letter.text_content %}
-  <div class="letter-body">
-    📝 {{ letter.text_content|linebreaksbr }}
-  </div>
-  {% else %}
-  <em>No text available.</em>
+  {% if letter.letter_type == "text" %}
+    {% if letter.text_content %}
+      <div class="letter-body">
+        📝 {{ letter.text_content|linebreaksbr }}
+      </div>
+    {% else %}
+      <em>No text available.</em>
+    {% endif %}
+
+  {% elif letter.letter_type == "image" %}
+    <div style="position: relative;">
+      {% with group_id="browse" %}
+      {% with images=letter.images.all %}
+        {% for image in images %}
+          <div style="display: {% if forloop.first %}block{% else %}none{% endif %};"
+               class="slide-group-{{ group_id }}" id="slide-{{ group_id }}-{{ forloop.counter }}">
+            <img src="{{ image.image.url }}" alt="Letter Image" class="clickable-image">
+          </div>
+        {% endfor %}
+
+        {% if images|length > 1 %}
+          <button onclick="prevSlide('{{ group_id }}', {{ images|length }})" id="prevBtn-{{ group_id }}"
+                  style="position:absolute;left:0;top:45%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:white;border:none;padding:8px;">←</button>
+
+          <button onclick="nextSlide('{{ group_id }}', {{ images|length }})" id="nextBtn-{{ group_id }}"
+                  style="position:absolute;right:0;top:45%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:white;border:none;padding:8px;">→</button>
+        {% endif %}
+      {% endwith %}
+      {% endwith %}
+    </div>
+
+  {% elif letter.letter_type == "pdf" and letter.pdf %}
+    {% with gid="browse" %}
+    <div class="pdf-card" id="pdfCard-{{ gid }}">
+      <div class="pdf-toolbar">
+        <button type="button" class="pdf-btn" id="prev-{{ gid }}">◀</button>
+        <span class="pdf-badge" id="pageLabel-{{ gid }}">1 / 1</span>
+        <button type="button" class="pdf-btn" id="next-{{ gid }}">▶</button>
+        <span style="width:8px;"></span>
+        <button type="button" class="pdf-btn" id="zoomOut-{{ gid }}">−</button>
+        <span class="pdf-badge" id="zoomLabel-{{ gid }}">100%</span>
+        <button type="button" class="pdf-btn" id="zoomIn-{{ gid }}">＋</button>
+        <button type="button" class="pdf-btn" id="fit-{{ gid }}">Fit</button>
+      </div>
+
+      <div class="pdf-canvas-wrap">
+        <canvas id="pdfCanvas-{{ gid }}"></canvas>
+      </div>
+    </div>
+
+    <script>
+      (function ensurePdfJs(){
+        if(window.pdfjsLib) return;
+        let s=document.createElement('script');
+        s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+        document.head.appendChild(s);
+      })();
+    </script>
+
+    <script>
+      (function initPDF(){
+        const url="{{ letter.pdf.url }}";
+        const gid="browse";
+        const canvas=document.getElementById('pdfCanvas-'+gid);
+        const ctx=canvas.getContext('2d');
+        const prevBtn=document.getElementById('prev-'+gid);
+        const nextBtn=document.getElementById('next-'+gid);
+        const zoomIn=document.getElementById('zoomIn-'+gid);
+        const zoomOut=document.getElementById('zoomOut-'+gid);
+        const fitBtn=document.getElementById('fit-'+gid);
+        const zoomLabel=document.getElementById('zoomLabel-'+gid);
+        const pageLabel=document.getElementById('pageLabel-'+gid);
+        const dpr=window.devicePixelRatio||1;
+
+        let pdfDoc=null,pageNum=1,pageCount=1,scale=1,rendering=false;
+
+        function update(){
+          zoomLabel.textContent=Math.round(scale*100)+'%';
+          pageLabel.textContent=pageNum+' / '+pageCount;
+          prevBtn.disabled=pageNum<=1;
+          nextBtn.disabled=pageNum>=pageCount;
+        }
+
+        function render(){
+          if(rendering||!pdfDoc) return;
+          rendering=true;
+          pdfDoc.getPage(pageNum).then(p=>{
+            let viewport=p.getViewport({ scale });
+            canvas.style.width=viewport.width+'px';
+            canvas.style.height=viewport.height+'px';
+            canvas.width=viewport.width*dpr;
+            canvas.height=viewport.height*dpr;
+            p.render({ canvasContext:ctx, viewport, transform:dpr!==1?[dpr,0,0,dpr,0,0]:null })
+             .promise.finally(()=>{ rendering=false;update(); });
+          });
+        }
+
+        function load(){
+          pdfjsLib.getDocument(url).promise.then(p=>{
+            pdfDoc=p;pageCount=p.numPages;render();
+          });
+        }
+
+        function setWorker(){
+          pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        }
+
+        if(window.pdfjsLib){ setWorker(); load(); }
+        else{
+          let i=setInterval(()=>{
+            if(window.pdfjsLib){ clearInterval(i); setWorker(); load(); }
+          },40);
+        }
+
+        zoomIn.onclick=()=>{ scale+=.15;render(); };
+        zoomOut.onclick=()=>{ scale=Math.max(.5,scale-.15);render(); };
+        fitBtn.onclick=()=>{ render(); };
+        prevBtn.onclick=()=>{ if(pageNum>1){ pageNum--;render(); }};
+        nextBtn.onclick=()=>{ if(pageNum<pageCount){ pageNum++;render(); }};
+      })();
+    </script>
+    {% endwith %}
   {% endif %}
-
-{% elif letter.letter_type == "image" %}
-<div style="position: relative;">
-{% with group_id="browse" %}
-{% with images=letter.images.all %}
-{% for image in images %}
-  <div style="display: {% if forloop.first %}block{% else %}none{% endif %};"
-       class="slide-group-{{ group_id }}" id="slide-{{ group_id }}-{{ forloop.counter }}">
-    <img src="{{ image.image.url }}" class="clickable-image">
-  </div>
-{% endfor %}
-
-{% if images|length > 1 %}
-<button onclick="prevSlide('{{ group_id }}', {{ images|length }})" id="prevBtn-{{ group_id }}"
- style="position:absolute;left:0;top:45%;background:rgba(0,0,0,.5);color:white;border:none;padding:8px;">←</button>
-
-<button onclick="nextSlide('{{ group_id }}', {{ images|length }})" id="nextBtn-{{ group_id }}"
- style="position:absolute;right:0;top:45%;background:rgba(0,0,0,.5);color:white;border:none;padding:8px;">→</button>
-{% endif %}
-{% endwith %}
-{% endwith %}
-</div>
-
-{% elif letter.letter_type == "pdf" and letter.pdf %}
-{% with gid="browse" %}
-<div class="pdf-card" id="pdfCard-{{ gid }}">
-  <div class="pdf-toolbar">
-    <button type="button" class="pdf-btn" id="prev-{{ gid }}">◀</button>
-    <span class="pdf-badge" id="pageLabel-{{ gid }}">1 / 1</span>
-    <button type="button" class="pdf-btn" id="next-{{ gid }}">▶</button>
-    <span style="width:8px;"></span>
-    <button type="button" class="pdf-btn" id="zoomOut-{{ gid }}">−</button>
-    <span class="pdf-badge" id="zoomLabel-{{ gid }}">100%</span>
-    <button type="button" class="pdf-btn" id="zoomIn-{{ gid }}">＋</button>
-    <button type="button" class="pdf-btn" id="fit-{{ gid }}">Fit</button>
-  </div>
-
-  <div class="pdf-canvas-wrap">
-    <canvas id="pdfCanvas-{{ gid }}"></canvas>
-  </div>
-</div>
-
-<script>
-(function ensurePdfJs(){
-  if(window.pdfjsLib) return;
-  let s=document.createElement('script');
-  s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-  document.head.appendChild(s);
-})();
-</script>
-
-<script>
-(function initPDF(){
-  const url="{{ letter.pdf.url }}";
-  const canvas=document.getElementById('pdfCanvas-browse');
-  const ctx=canvas.getContext('2d');
-  const prevBtn=document.getElementById('prev-browse');
-  const nextBtn=document.getElementById('next-browse');
-  const zoomIn=document.getElementById('zoomIn-browse');
-  const zoomOut=document.getElementById('zoomOut-browse');
-  const fitBtn=document.getElementById('fit-browse');
-  const zoomLabel=document.getElementById('zoomLabel-browse');
-  const pageLabel=document.getElementById('pageLabel-browse');
-  const dpr=window.devicePixelRatio||1;
-
-  let pdfDoc=null,pageNum=1,pageCount=1,scale=1,rendering=false;
-
-  function update(){
-    zoomLabel.textContent=Math.round(scale*100)+'%';
-    pageLabel.textContent=pageNum+' / '+pageCount;
-    prevBtn.disabled=pageNum<=1;
-    nextBtn.disabled=pageNum>=pageCount;
-  }
-
-  function render(){
-    if(rendering||!pdfDoc) return;
-    rendering=true;
-    pdfDoc.getPage(pageNum).then(p=>{
-      let viewport=p.getViewport({ scale });
-      canvas.style.width=viewport.width+'px';
-      canvas.style.height=viewport.height+'px';
-      canvas.width=viewport.width*dpr;
-      canvas.height=viewport.height*dpr;
-      p.render({ canvasContext:ctx, viewport, transform:dpr!==1?[dpr,0,0,dpr,0,0]:null })
-       .promise.finally(()=>{ rendering=false;update(); });
-    });
-  }
-
-  function load(){
-    pdfjsLib.getDocument(url).promise.then(p=>{
-      pdfDoc=p;pageCount=p.numPages;render();
-    });
-  }
-
-  if(window.pdfjsLib){
-    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-    load();
-  } else {
-    let i=setInterval(()=>{
-      if(window.pdfjsLib){ clearInterval(i); load(); }
-    },40);
-  }
-
-  zoomIn.onclick=()=>{ scale+=.15;render(); };
-  zoomOut.onclick=()=>{ scale=Math.max(.5,scale-.15);render(); };
-  prevBtn.onclick=()=>{ if(pageNum>1){ pageNum--;render(); }};
-  nextBtn.onclick=()=>{ if(pageNum<pageCount){ pageNum++;render(); }};
-})();
-</script>
-{% endwith %}
-{% endif %}
 
 </div>
 
 
 <form method="post" action="{% url 'react_to_letter' letter.id %}" class="browse-actions">
-{% csrf_token %}
-<button name="liked" value="true" class="btn btn-primary">❤️ Like</button>
-<button name="liked" value="false" class="btn btn-primary" style="background:#2563eb;">❌ Skip</button>
+  {% csrf_token %}
+  <button name="liked" value="true" class="btn btn-primary">❤️ Like</button>
+  <button name="liked" value="false" class="btn btn-primary" style="margin-left: 10px; background:#2563eb;">❌ Skip</button>
 </form>
 
 {% else %}
-<p>No more letters available.</p>
+  <p>No more letters available. Try again later.</p>
 {% endif %}
 
 
 <script src="{% static 'js/modal_image_viewer.js' %}"></script>
 
 <script>
-const currentSlides = {};
-function showSlide(id,i,t){
-  for(let k=1;k<=t;k++){
-    let s=document.getElementById(`slide-${id}-${k}`);
-    if(s) s.style.display=i===k?'block':'none';
-  }
-  let p=document.getElementById(`prevBtn-${id}`);
-  let n=document.getElementById(`nextBtn-${id}`);
-  if(p) p.style.display=i===1?'none':'block';
-  if(n) n.style.display=i===t?'none':'block';
-  currentSlides[id]=i;
-}
-function nextSlide(id,t){ showSlide(id,Math.min((currentSlides[id]||1)+1,t),t); }
-function prevSlide(id,t){ showSlide(id,Math.max((currentSlides[id]||1)-1,1),t); }
+  const currentSlides = {};
 
-document.addEventListener("DOMContentLoaded",()=>{
-  let t=document.querySelectorAll(".slide-group-browse").length;
-  if(t>0) showSlide("browse",1,t);
-});
+  function showSlide(groupId, index, total) {
+    for (let i = 1; i <= total; i++) {
+      const slide = document.getElementById(`slide-${groupId}-${i}`);
+      if (slide) {
+        slide.style.display = (i === index) ? 'block' : 'none';
+      }
+    }
+
+    const prevBtn = document.getElementById(`prevBtn-${groupId}`);
+    const nextBtn = document.getElementById(`nextBtn-${groupId}`);
+
+    if (prevBtn) prevBtn.style.display = index === 1 ? 'none' : 'block';
+    if (nextBtn) nextBtn.style.display = index === total ? 'none' : 'block';
+
+    currentSlides[groupId] = index;
+  }
+
+  function nextSlide(groupId, total) {
+    if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+    if (currentSlides[groupId] < total) {
+      currentSlides[groupId]++;
+      showSlide(groupId, currentSlides[groupId], total);
+    }
+  }
+
+  function prevSlide(groupId, total) {
+    if (!currentSlides[groupId]) currentSlides[groupId] = 1;
+    if (currentSlides[groupId] > 1) {
+      currentSlides[groupId]--;
+      showSlide(groupId, currentSlides[groupId], total);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const groupId = "browse";
+    const total = document.querySelectorAll(`.slide-group-${groupId}`).length;
+    if (total > 0) {
+      showSlide(groupId, 1, total);
+    }
+  });
 </script>
 
 {% endblock %}
