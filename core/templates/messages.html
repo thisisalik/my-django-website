@@ -48,6 +48,11 @@
       margin-top: 2px;
       margin-left: 5px;
     }
+    .chat-form textarea {
+  height: 45px;       /* 🔹 change this value */
+  resize: none;       /* prevent dragging bigger */
+  border-radius: 10px;
+}
   </style>
   
 
@@ -74,7 +79,7 @@
     <button type="submit">Send</button>
   </form>
 
-  <p><a href="/chats/">← Back to Chat List</a></p>
+  <a href="/chats/" class="back-btn">← Back to Chat List</a>
 </div>
 
 <script>
