@@ -81,7 +81,7 @@
 
   /* override global textarea height ONLY in this form */
   .chat-form textarea {
-    min-height: 40px !important;  /* <— main fix so it’s not huge */
+    min-height: 40px !important;  /* main fix so it’s not huge */
     max-height: 100px;
     resize: none;
     border-radius: 999px;
@@ -90,12 +90,6 @@
 
   .chat-send-btn {
     white-space: nowrap;
-  }
-
-  .back-link {
-    display: inline-block;
-    margin-top: 10px;
-    font-size: 0.9rem;
   }
 </style>
 
@@ -127,7 +121,8 @@
     </form>
   </div>
 
-  <a href="/chats/" class="back-link">← Back to Chat List</a>
+  {# 🔹 same style as “← Back to Profile” #}
+  <a href="/chats/" class="btn btn-secondary">← Back to Chat List</a>
 </div>
 
 <script>
