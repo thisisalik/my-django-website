@@ -1,121 +1,168 @@
 {% extends 'base.html' %}
 {% load tz %}
 {% block content %}
+
 <style>
-    .chat-box {
-      border: 1px solid #ddd;
-      padding: 15px;
-      border-radius: 10px;
-      height: 300px;
-      overflow-y: auto;
-      background-color: #fff;
-    }
-  
-    .message-row {
-      display: flex;
-      margin-bottom: 10px;
-      max-width: 100%;
-    }
-  
-    .message-bubble {
-      padding: 10px 15px;
-      border-radius: 18px;
-      max-width: 70%;
-      word-wrap: break-word;
-    }
-  
-    .from-me {
-      justify-content: flex-end;
-    }
-  
-    .from-me .message-bubble {
-      background-color: #dcf8c6;
-      align-self: flex-end;
-    }
-  
-    .from-them {
-      justify-content: flex-start;
-    }
-  
-    .from-them .message-bubble {
-      background-color: #f1f0f0;
-      align-self: flex-start;
-    }
-  
-    .timestamp {
-      font-size: 0.75rem;
-      color: #777;
-      margin-top: 2px;
-      margin-left: 5px;
-    }
-    .chat-form textarea {
-  height: 45px;       /* 🔹 change this value */
-  resize: none;       /* prevent dragging bigger */
-  border-radius: 10px;
-}
-  </style>
-  
+  /* --- Chat layout just for this page --- */
+
+  .chat-container {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .chat-card {
+    margin-top: 12px;
+  }
+
+  .chat-box {
+    border-radius: 16px;
+    padding: 12px;
+    height: 320px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+  }
+
+  .message-row {
+    display: flex;
+    margin-bottom: 8px;
+    max-width: 100%;
+  }
+
+  .message-bubble {
+    padding: 8px 12px;
+    border-radius: 18px;
+    max-width: 70%;
+    word-wrap: break-word;
+    font-size: 0.95rem;
+  }
+
+  .from-me {
+    justify-content: flex-end;
+  }
+
+  .from-me .message-bubble {
+    background-color: #dcf8c6;
+    align-self: flex-end;
+  }
+
+  .from-them {
+    justify-content: flex-start;
+  }
+
+  .from-them .message-bubble {
+    background-color: #f1f0f0;
+    align-self: flex-start;
+  }
+
+  .timestamp {
+    font-size: 0.75rem;
+    color: #777;
+    margin-top: 2px;
+  }
+
+  /* --- Input area --- */
+
+  .chat-form {
+    margin-top: 10px;
+  }
+
+  /* hide “Text:” label to look more like a chat app */
+  .chat-form label {
+    display: none;
+  }
+
+  .chat-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  /* override global textarea height ONLY in this form */
+  .chat-form textarea {
+    min-height: 40px !important;  /* <— main fix so it’s not huge */
+    max-height: 100px;
+    resize: none;
+    border-radius: 999px;
+    padding: 10px 12px;
+  }
+
+  .chat-send-btn {
+    white-space: nowrap;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 0.9rem;
+  }
+</style>
 
 <div class="chat-container">
-  <h2>Chat with {{ receiver.name }}</h2>
+  <div class="t-card chat-card">
+    <h2>Chat with {{ receiver.name }}</h2>
 
-  <div class="chat-box" id="message-container">
-    {% for message in messages %}
-      <div class="message-row {% if message.sender == request.user.profile %}from-me{% else %}from-them{% endif %}">
-        <div class="message-bubble">
-          {{ message.text }}
-          <div class="timestamp">{{ message.timestamp|date:"M j, Y, g:i a" }}</div>
+    <div class="chat-box" id="message-container">
+      {% for message in messages %}
+        <div class="message-row {% if message.sender == request.user.profile %}from-me{% else %}from-them{% endif %}">
+          <div class="message-bubble">
+            {{ message.text }}
+            <div class="timestamp">
+              {{ message.timestamp|date:"M j, Y, g:i a" }}
+            </div>
+          </div>
         </div>
+      {% empty %}
+        <p>No messages yet.</p>
+      {% endfor %}
+    </div>
+
+    <form method="post" id="message-form" class="chat-form">
+      {% csrf_token %}
+      <div class="chat-input-row">
+        {{ form.text }}
+        <button type="submit" class="btn btn-primary chat-send-btn">Send</button>
       </div>
-    {% empty %}
-      <p>No messages yet.</p>
-    {% endfor %}
+    </form>
   </div>
 
-  <form method="post" id="message-form" class="chat-form">
-    {% csrf_token %}
-    {{ form.text.label_tag }}<br>
-    {{ form.text }}<br>
-    <button type="submit">Send</button>
-  </form>
-
-  <a href="/chats/" class="back-btn">← Back to Chat List</a>
+  <a href="/chats/" class="back-link">← Back to Chat List</a>
 </div>
 
 <script>
-    function localizeTimestamps() {
-      document.querySelectorAll('.timestamp').forEach(function (el) {
-        var iso = el.getAttribute('data-ts');
-        if (!iso) return;
-        var d = new Date(iso);          // parses UTC ISO like "2025-09-09T16:55:00Z"
-        if (isNaN(d)) return;
-        el.textContent = d.toLocaleString(undefined, {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit'
-        });
+  function localizeTimestamps() {
+    document.querySelectorAll('.timestamp').forEach(function (el) {
+      var iso = el.getAttribute('data-ts');
+      if (!iso) return;
+      var d = new Date(iso);          // parses UTC ISO like "2025-09-09T16:55:00Z"
+      if (isNaN(d)) return;
+      el.textContent = d.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
       });
-    }
-  
-    function loadMessages() {
-      fetch("{% url 'fetch_messages' receiver.id %}")
-        .then(response => response.text())
-        .then(html => {
-          document.getElementById("message-container").innerHTML = html;
-          localizeTimestamps(); // ← convert after replacing HTML
-          const box = document.getElementById("message-container");
-          box.scrollTop = box.scrollHeight;
-        });
-    }
-  
-    // initial load + polling
-    document.addEventListener('DOMContentLoaded', function () {
-      localizeTimestamps(); // in case the page had initial messages
-      loadMessages();
-      setInterval(loadMessages, 5000);
     });
-  </script>
-  
+  }
+
+  function loadMessages() {
+    fetch("{% url 'fetch_messages' receiver.id %}")
+      .then(response => response.text())
+      .then(html => {
+        document.getElementById("message-container").innerHTML = html;
+        localizeTimestamps();
+        const box = document.getElementById("message-container");
+        box.scrollTop = box.scrollHeight;
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    localizeTimestamps();
+    loadMessages();
+    setInterval(loadMessages, 5000);
+  });
+</script>
+
 {% endblock %}
