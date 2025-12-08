@@ -9,320 +9,409 @@
     display: none !important;
   }
 
-  /* ✅ Revert select styling to native for dropdowns to work correctly */
+  /* keep native selects so the dropdown arrow works on iOS */
   select {
     appearance: revert;
     -webkit-appearance: revert;
     -moz-appearance: revert;
   }
+
+  .edit-card {
+    margin-top: 10px;
+  }
+
+  .edit-header-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0 0 2px;
+  }
+
+  .edit-header-subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #4b5563;
+  }
+
+  .field-block {
+    margin: 10px 0 6px;
+  }
+
+  .field-block label {
+    font-weight: 500;
+    color: #111827;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 12px 0 6px;
+  }
+
+  .interest-list label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .letter-edit-card {
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 4px rgba(15,23,42,.04);
+  }
+
+  .letter-edit-card textarea {
+    width: 100%;
+    border-radius: 10px;
+  }
+
+  .letter-images-label {
+    font-weight: 600;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .t-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+  }
 </style>
 
-<h2>Edit Your Profile ✏️</h2>
-{# show ONLY error messages, never success/info #}
-{% if messages %}
-  {% for message in messages %}
-    {% if "error" in message.tags %}
-      <div style="padding:10px;border-radius:8px;margin:10px 0;
-                  background:#ffe8e8;color:#b00020;border:1px solid #f5b5b5;">
-        {{ message }}
-      </div>
-    {% endif %}
-  {% endfor %}
-{% endif %}
+<div class="t-card edit-card">
+  <div style="margin-bottom: 8px;">
+    <h2 class="edit-header-title">Edit Your Profile ✏️</h2>
+    <p class="edit-header-subtitle">Update your info, preferences and your letter.</p>
+  </div>
 
+  {# show ONLY error messages, never success/info #}
+  {% if messages %}
+    {% for message in messages %}
+      {% if "error" in message.tags %}
+        <div style="padding:10px;border-radius:8px;margin:10px 0;
+                    background:#ffe8e8;color:#b00020;border:1px solid #f5b5b5;">
+          {{ message }}
+        </div>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
 
-<form method="POST" enctype="multipart/form-data" id="profile-form">
+  <form method="POST" enctype="multipart/form-data" id="profile-form">
     {% csrf_token %}
 
-    <p><label for="id_age">Age:</label>
+    <div class="field-block">
+      <label for="id_age">Age:</label>
       <select name="age" id="id_age">
         {% for age in ages %}
           <option value="{{ age }}" {% if form.age.value == age %}selected{% endif %}>{{ age }}</option>
         {% endfor %}
       </select>
-    </p>
+    </div>
 
-    <p><label for="id_gender">Gender:</label> {{ form.gender }}</p>
+    <div class="field-block">
+      <label for="id_gender">Gender:</label>
+      {{ form.gender }}
+    </div>
 
+    <div class="field-block">
+      <label for="id_profile_picture">Profile picture:</label><br>
+      <img id="current-profile-pic"
+           src="{{ form.instance.profile_picture.url }}"
+           alt="Current Profile Picture"
+           style="max-height: 120px; border-radius: 12px; display: block; margin: 6px 0 10px;">
+      <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer;">
+        <span style="background: #eee; padding: 6px 12px; border-radius: 999px;">📷 Change image</span>
+        <input type="file" name="profile_picture" id="id_profile_picture" style="display: none;">
+      </label>
+      {% if form.profile_picture.errors %}
+        <div style="color: red; margin-top: 5px;">{{ form.profile_picture.errors.0 }}</div>
+      {% endif %}
+    </div>
 
-    <p>
-        <label for="id_profile_picture">Profile picture:</label><br>
-        <img id="current-profile-pic"
-             src="{{ form.instance.profile_picture.url }}"
-             alt="Current Profile Picture"
-             style="max-height: 120px; border-radius: 8px; display: block; margin-bottom: 10px;">
-      
-        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-          <span style="background: #eee; padding: 5px 10px; border-radius: 5px;">📷 Change image</span>
-          <input type="file" name="profile_picture" id="id_profile_picture" style="display: none;">
-        </label>
-      
-        {% if form.profile_picture.errors %}
-          <div style="color: red; margin-top: 5px;">{{ form.profile_picture.errors.0 }}</div>
-        {% endif %}
-      </p>
-      
-      
-      
-      
-          
-      
-    <p><label for="id_preferred_gender">Preferred gender:</label> {{ form.preferred_gender }}</p>
+    <div class="field-block">
+      <label for="id_preferred_gender">Preferred gender:</label>
+      {{ form.preferred_gender }}
+    </div>
 
-
-    <p><label for="id_preferred_age_min">Preferred age min:</label>
+    <div class="field-block">
+      <label for="id_preferred_age_min">Preferred age min:</label>
       <select name="preferred_age_min" id="id_preferred_age_min">
         {% for age in ages %}
           <option value="{{ age }}" {% if form.preferred_age_min.value == age %}selected{% endif %}>{{ age }}</option>
         {% endfor %}
       </select>
-    </p>
+    </div>
 
-    <p><label for="id_preferred_age_max">Preferred age max:</label>
+    <div class="field-block">
+      <label for="id_preferred_age_max">Preferred age max:</label>
       <select name="preferred_age_max" id="id_preferred_age_max">
         {% for age in ages %}
           <option value="{{ age }}" {% if form.preferred_age_max.value == age %}selected{% endif %}>{{ age }}</option>
         {% endfor %}
       </select>
-      <p>
-        <label for="id_location">City:</label>
-        <input type="text" name="location" id="id_location" value="{{ form.location.value|default_if_none:'' }}" autocomplete="off" />
-        {% if form.location.errors %}
-          <div style="color: red; margin-bottom: 10px;">{{ form.location.errors.0 }}</div>
-        {% endif %}
-      </p>
-      
-      
-      <div style="margin-top: -10px; margin-bottom: 10px;">
-        {% for checkbox in form.only_same_city %}
-          <label style="display: block;">{{ checkbox.tag }} Only show matches from my city</label>
-        {% endfor %}
-      </div>
-      
-      
-      <p><strong>Interested in:</strong></p>
-      {% if form.connection_types.errors %}
-  <div style="color: red; margin-bottom: 5px;">{{ form.connection_types.errors.0 }}</div>
-{% endif %}
+    </div>
 
-      <div>
+    <div class="field-block">
+      <label for="id_location">City:</label>
+      <input type="text"
+             name="location"
+             id="id_location"
+             value="{{ form.location.value|default_if_none:'' }}"
+             autocomplete="off" />
+      {% if form.location.errors %}
+        <div style="color: red; margin-bottom: 10px;">{{ form.location.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div class="field-block" style="margin-top:-4px;">
+      {% for checkbox in form.only_same_city %}
+        <label style="display:flex;align-items:center;gap:6px;">
+          {{ checkbox.tag }} <span>Only show matches from my city</span>
+        </label>
+      {% endfor %}
+    </div>
+
+    <div class="field-block">
+      <p class="section-title">Interested in:</p>
+      {% if form.connection_types.errors %}
+        <div style="color: red; margin-bottom: 5px;">{{ form.connection_types.errors.0 }}</div>
+      {% endif %}
+      <div class="interest-list">
         {% for checkbox in form.connection_types %}
-          <label style="display: block;">{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
+          <label>{{ checkbox.tag }} {{ checkbox.choice_label }}</label>
         {% endfor %}
-        
       </div>
-      
-    
+    </div>
+
     {% if letters %}
-        {% for letter in letters %}
-            {% if letter.letter_type == "text" %}
-                <label><strong>Letter Text Content:</strong></label><br>
-                <textarea name="text_content_{{ letter.id }}" rows="4" style="width: 100%;">{{ letter.text_content }}</textarea>
-                <br><br>
-                <a href="{% url 'delete_letter' letter.id %}" class="btn btn-sm btn-danger"
-                   onclick="return confirm('Are you sure you want to delete this letter?');">
-                   ❌ Delete Letter
-                </a>
-            {% elif letter.letter_type == "image" %}
-                <label><strong>Your Letter Images:</strong></label><br>
-                <div id="image-container" style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px;">
-                    {% for img in letter.images.all %}
-                        <div class="image-wrapper" style="position: relative;">
-                            <img src="{{ img.image.url }}" alt="Letter Image"
-                                 style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px;">
-                            <button type="button" class="btn btn-danger btn-sm delete-image"
-                                    data-img-id="{{ img.id }}"
-                                    style="position: absolute; top: 5px; right: 5px; padding: 0; width: 25px; height: 25px; border-radius: 50%;">
-                                ×
-                            </button>
-                        </div>
-                    {% endfor %}
+      <p class="section-title">Your Letter</p>
+      {% for letter in letters %}
+        {% if letter.letter_type == "text" %}
+          <div class="letter-edit-card">
+            <label class="letter-images-label">Letter text:</label>
+            <textarea name="text_content_{{ letter.id }}" rows="4">{{ letter.text_content }}</textarea>
+            <br>
+            <a href="{% url 'delete_letter' letter.id %}"
+               class="btn btn-sm btn-danger"
+               onclick="return confirm('Are you sure you want to delete this letter?');">
+              ❌ Delete Letter
+            </a>
+          </div>
+
+        {% elif letter.letter_type == "image" %}
+          <div class="letter-edit-card">
+            <span class="letter-images-label">Your Letter Images:</span>
+            <div id="image-container" style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px;">
+              {% for img in letter.images.all %}
+                <div class="image-wrapper" style="position: relative;">
+                  <img src="{{ img.image.url }}" alt="Letter Image"
+                       style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px;">
+                  <button type="button"
+                          class="btn btn-danger btn-sm delete-image"
+                          data-img-id="{{ img.id }}"
+                          style="position: absolute; top: 5px; right: 5px; padding: 0; width: 25px; height: 25px; border-radius: 50%;">
+                    ×
+                  </button>
+                </div>
+              {% endfor %}
+            </div>
+
+            <div style="margin-top: 8px;" id="upload-btn-wrapper">
+              <button type="button" id="upload-image-btn" class="btn btn-primary">
+                📄 Upload New Images
+              </button>
+              <input type="file" name="images" id="image-upload-input" multiple accept="image/*" style="display: none;">
+            </div>
+
+            <input type="hidden" name="delete_image_ids" id="delete_image_ids">
+          </div>
+
+        {% elif letter.letter_type == "pdf" and letter.pdf %}
+          {% with gid="p"|add:letter.id|stringformat:"s" %}
+            <div class="letter-edit-card">
+              <span class="letter-images-label">Your Letter PDF:</span>
+              <style>
+                .pdf-card { border:1px solid #ddd;border-radius:12px;padding:12px; }
+                .pdf-toolbar { display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-bottom:10px; }
+                .pdf-btn { border:1px solid #ccc;background:#f6f6f6;padding:6px 10px;border-radius:8px;cursor:pointer;line-height:1;font-size:14px; }
+                .pdf-btn:disabled { opacity:.4;cursor:not-allowed; }
+                .pdf-badge { font-size:13px;color:#444;min-width:56px;text-align:center; }
+                .pdf-canvas-wrap { width:100%;max-height:40vh;overflow:auto;border-radius:8px;background:#fafafa;display:flex;justify-content:center;align-items:flex-start; }
+                .pdf-canvas-wrap::-webkit-scrollbar { height:8px;width:8px; }
+                .pdf-canvas-wrap::-webkit-scrollbar-thumb { background:#d0d0d0;border-radius:8px; }
+                @media (max-width:420px){
+                  .pdf-card{padding:8px;border-radius:10px}
+                  .pdf-toolbar{gap:6px;margin-bottom:6px}
+                  .pdf-btn{padding:5px 8px;border-radius:7px;font-size:13px}
+                  .pdf-badge{font-size:12px;min-width:48px}
+                  .pdf-canvas-wrap{max-height:50vh}
+                }
+              </style>
+
+              <div class="pdf-card" id="pdfCard-{{ gid }}">
+                <div class="pdf-toolbar">
+                  <button type="button" class="pdf-btn" id="prev-{{ gid }}">◀</button>
+                  <span class="pdf-badge" id="pageLabel-{{ gid }}">1 / 1</span>
+                  <button type="button" class="pdf-btn" id="next-{{ gid }}">▶</button>
+
+                  <span style="width:12px;"></span>
+
+                  <button type="button" class="pdf-btn" id="zoomOut-{{ gid }}">−</button>
+                  <span class="pdf-badge" id="zoomLabel-{{ gid }}">100%</span>
+                  <button type="button" class="pdf-btn" id="zoomIn-{{ gid }}">＋</button>
+                  <button type="button" class="pdf-btn" id="fit-{{ gid }}">Fit</button>
                 </div>
 
-                <div style="margin-top: 15px;" id="upload-btn-wrapper">
-                    <button type="button" id="upload-image-btn" class="btn btn-primary">
-                        📄 Upload New Images
-                    </button>
-                    <input type="file" name="images" id="image-upload-input" multiple accept="image/*" style="display: none;">
-                  </div>
+                <div class="pdf-canvas-wrap">
+                  <canvas id="pdfCanvas-{{ gid }}"></canvas>
+                </div>
+              </div>
 
-                <input type="hidden" name="delete_image_ids" id="delete_image_ids">
-                {% elif letter.letter_type == "pdf" and letter.pdf %}
-                {% with gid="p"|add:letter.id|stringformat:"s" %}
-                  <style>
-                    .pdf-card { border:1px solid #ddd;border-radius:12px;padding:12px; }
-                    .pdf-toolbar { display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-bottom:10px; }
-                    .pdf-btn { border:1px solid #ccc;background:#f6f6f6;padding:6px 10px;border-radius:8px;cursor:pointer;line-height:1;font-size:14px; }
-                    .pdf-btn:disabled { opacity:.4;cursor:not-allowed; }
-                    .pdf-badge { font-size:13px;color:#444;min-width:56px;text-align:center; }
-                    .pdf-canvas-wrap { width:100%;max-height:40vh;overflow:auto;border-radius:8px;background:#fafafa;display:flex;justify-content:center;align-items:flex-start; }
-                    .pdf-canvas-wrap::-webkit-scrollbar { height:8px;width:8px; }
-                    .pdf-canvas-wrap::-webkit-scrollbar-thumb { background:#d0d0d0;border-radius:8px; }
-                    @media (max-width:420px){
-                      .pdf-card{padding:8px;border-radius:10px}
-                      .pdf-toolbar{gap:6px;margin-bottom:6px}
-                      .pdf-btn{padding:5px 8px;border-radius:7px;font-size:13px}
-                      .pdf-badge{font-size:12px;min-width:48px}
-                      .pdf-canvas-wrap{max-height:50vh}
-                    }
-                  </style>
-                
-                  <div class="pdf-card" id="pdfCard-{{ gid }}">
-                    <div class="pdf-toolbar">
-                      <button type="button" class="pdf-btn" id="prev-{{ gid }}">◀</button>
-                      <span class="pdf-badge" id="pageLabel-{{ gid }}">1 / 1</span>
-                      <button type="button" class="pdf-btn" id="next-{{ gid }}">▶</button>
-                
-                      <span style="width:12px;"></span>
-                
-                      <button type="button" class="pdf-btn" id="zoomOut-{{ gid }}">−</button>
-                      <span class="pdf-badge" id="zoomLabel-{{ gid }}">100%</span>
-                      <button type="button" class="pdf-btn" id="zoomIn-{{ gid }}">＋</button>
-                      <button type="button" class="pdf-btn" id="fit-{{ gid }}">Fit</button>
-                    </div>
-                
-                    <div class="pdf-canvas-wrap">
-                      <canvas id="pdfCanvas-{{ gid }}"></canvas>
-                    </div>
-                  </div>
-                
-                  <a href="{% url 'delete_letter' letter.id %}" class="btn btn-sm btn-danger"
-                     onclick="return confirm('Are you sure you want to delete this letter?');">
-                     ❌ Delete Letter
-                  </a>
-                
-                  <script>
-                    (function ensurePdfJs(){
-                      if (window.pdfjsLib) return;
-                      var s=document.createElement('script');
-                      s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-                      document.head.appendChild(s);
-                    })();
-                  </script>
-                
-                  <script>
-                    (function initPDF{{ gid }}() {
-                      const url        = "{{ letter.pdf.url }}";
-                      const canvas     = document.getElementById('pdfCanvas-{{ gid }}');
-                      const ctx        = canvas.getContext('2d');
-                      const prevBtn    = document.getElementById('prev-{{ gid }}');
-                      const nextBtn    = document.getElementById('next-{{ gid }}');
-                      const zoomInBtn  = document.getElementById('zoomIn-{{ gid }}');
-                      const zoomOutBtn = document.getElementById('zoomOut-{{ gid }}');
-                      const fitBtn     = document.getElementById('fit-{{ gid }}');
-                      const zoomLabel  = document.getElementById('zoomLabel-{{ gid }}');
-                      const pageLabel  = document.getElementById('pageLabel-{{ gid }}');
-                      const dpr        = window.devicePixelRatio || 1;
-                
-                      let pdfDoc=null, pageNum=1, pageCount=1, baseScale=1, scale=1, rendering=false;
-                
-                      function updateLabels(){
-                        zoomLabel.textContent = Math.round(scale*100) + '%';
-                        pageLabel.textContent = pageNum + ' / ' + pageCount;
-                        prevBtn.disabled = (pageNum<=1);
-                        nextBtn.disabled = (pageNum>=pageCount);
+              <a href="{% url 'delete_letter' letter.id %}" class="btn btn-sm btn-danger"
+                 onclick="return confirm('Are you sure you want to delete this letter?');">
+                ❌ Delete Letter
+              </a>
+
+              <script>
+                (function ensurePdfJs(){
+                  if (window.pdfjsLib) return;
+                  var s=document.createElement('script');
+                  s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+                  document.head.appendChild(s);
+                })();
+              </script>
+
+              <script>
+                (function initPDF{{ gid }}() {
+                  const url        = "{{ letter.pdf.url }}";
+                  const canvas     = document.getElementById('pdfCanvas-{{ gid }}');
+                  const ctx        = canvas.getContext('2d');
+                  const prevBtn    = document.getElementById('prev-{{ gid }}');
+                  const nextBtn    = document.getElementById('next-{{ gid }}');
+                  const zoomInBtn  = document.getElementById('zoomIn-{{ gid }}');
+                  const zoomOutBtn = document.getElementById('zoomOut-{{ gid }}');
+                  const fitBtn     = document.getElementById('fit-{{ gid }}');
+                  const zoomLabel  = document.getElementById('zoomLabel-{{ gid }}');
+                  const pageLabel  = document.getElementById('pageLabel-{{ gid }}');
+                  const dpr        = window.devicePixelRatio || 1;
+
+                  let pdfDoc=null, pageNum=1, pageCount=1, baseScale=1, scale=1, rendering=false;
+
+                  function updateLabels(){
+                    zoomLabel.textContent = Math.round(scale*100) + '%';
+                    pageLabel.textContent = pageNum + ' / ' + pageCount;
+                    prevBtn.disabled = (pageNum<=1);
+                    nextBtn.disabled = (pageNum>=pageCount);
+                  }
+
+                  function fitToWidth(page){
+                    const card = document.getElementById('pdfCard-{{ gid }}');
+                    const wrap = card.querySelector('.pdf-canvas-wrap');
+                    const available = wrap.clientWidth - 2;
+                    const viewport1 = page.getViewport({ scale:1 });
+                    baseScale = available / viewport1.width;
+                    scale = baseScale;
+                  }
+
+                  function renderPage(){
+                    if (rendering) return;
+                    rendering = true;
+                    pdfDoc.getPage(pageNum).then(page=>{
+                      if (baseScale===1) fitToWidth(page);
+                      const viewport = page.getViewport({ scale });
+                      canvas.style.width = Math.round(viewport.width)+'px';
+                      canvas.style.height = Math.round(viewport.height)+'px';
+                      canvas.width = Math.round(viewport.width*dpr);
+                      canvas.height = Math.round(viewport.height*dpr);
+                      const transform = dpr!==1 ? [dpr,0,0,dpr,0,0] : null;
+                      page.render({ canvasContext: ctx, viewport, transform }).promise.finally(()=>{
+                        rendering=false; updateLabels();
+                      });
+                    });
+                  }
+
+                  function start(){
+                    pdfjsLib.getDocument(url).promise.then(doc=>{
+                      pdfDoc = doc; pageCount = doc.numPages; pageNum = 1;
+                      renderPage();
+                      const card = document.getElementById('pdfCard-{{ gid }}');
+                      if ('ResizeObserver' in window){
+                        const ro = new ResizeObserver(()=>{ baseScale=1; renderPage(); });
+                        ro.observe(card);
+                      } else {
+                        window.addEventListener('resize', ()=>{ baseScale=1; renderPage(); });
                       }
-                
-                      function fitToWidth(page){
-                        const card = document.getElementById('pdfCard-{{ gid }}');
-                        const wrap = card.querySelector('.pdf-canvas-wrap');
-                        const available = wrap.clientWidth - 2;
-                        const viewport1 = page.getViewport({ scale:1 });
-                        baseScale = available / viewport1.width;
-                        scale = baseScale;
-                      }
-                
-                      function renderPage(){
-                        if (rendering) return;
-                        rendering = true;
-                        pdfDoc.getPage(pageNum).then(page=>{
-                          if (baseScale===1) fitToWidth(page);
-                          const viewport = page.getViewport({ scale });
-                          canvas.style.width = Math.round(viewport.width)+'px';
-                          canvas.style.height = Math.round(viewport.height)+'px';
-                          canvas.width = Math.round(viewport.width*dpr);
-                          canvas.height = Math.round(viewport.height*dpr);
-                          const transform = dpr!==1 ? [dpr,0,0,dpr,0,0] : null;
-                          page.render({ canvasContext: ctx, viewport, transform }).promise.finally(()=>{
-                            rendering=false; updateLabels();
-                          });
-                        });
-                      }
-                
-                      function start(){
-                        pdfjsLib.getDocument(url).promise.then(doc=>{
-                          pdfDoc = doc; pageCount = doc.numPages; pageNum = 1;
-                          renderPage();
-                          const card = document.getElementById('pdfCard-{{ gid }}');
-                          if ('ResizeObserver' in window){
-                            const ro = new ResizeObserver(()=>{ baseScale=1; renderPage(); });
-                            ro.observe(card);
-                          } else {
-                            window.addEventListener('resize', ()=>{ baseScale=1; renderPage(); });
-                          }
-                        }).catch(console.error);
-                      }
-                
-                      function setWorker(){
-                        pdfjsLib.GlobalWorkerOptions.workerSrc =
-                          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-                      }
-                
-                      if (window.pdfjsLib){ setWorker(); start(); }
-                      else {
-                        const iv = setInterval(()=>{
-                          if (window.pdfjsLib){ clearInterval(iv); setWorker(); start(); }
-                        }, 40);
-                      }
-                
-                      zoomInBtn.addEventListener('click', ()=>{ scale=Math.min(scale+0.15,4); renderPage(); });
-                      zoomOutBtn.addEventListener('click', ()=>{ scale=Math.max(scale-0.15,0.4); renderPage(); });
-                      fitBtn.addEventListener('click', ()=>{ baseScale=1; renderPage(); });
-                      prevBtn.addEventListener('click', ()=>{ if(pageNum>1){ pageNum--; renderPage(); } });
-                      nextBtn.addEventListener('click', ()=>{ if(pageNum<pageCount){ pageNum++; renderPage(); } });
-                    })();
-                  </script>
-                {% endwith %}
-                
-            {% endif %}
-        {% endfor %}
+                    }).catch(console.error);
+                  }
+
+                  function setWorker(){
+                    pdfjsLib.GlobalWorkerOptions.workerSrc =
+                      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+                  }
+
+                  if (window.pdfjsLib){ setWorker(); start(); }
+                  else {
+                    const iv = setInterval(()=>{
+                      if (window.pdfjsLib){ clearInterval(iv); setWorker(); start(); }
+                    }, 40);
+                  }
+
+                  zoomInBtn.addEventListener('click', ()=>{ scale=Math.min(scale+0.15,4); renderPage(); });
+                  zoomOutBtn.addEventListener('click', ()=>{ scale=Math.max(scale-0.15,0.4); renderPage(); });
+                  fitBtn.addEventListener('click', ()=>{ baseScale=1; renderPage(); });
+                  prevBtn.addEventListener('click', ()=>{ if(pageNum>1){ pageNum--; renderPage(); } });
+                  nextBtn.addEventListener('click', ()=>{ if(pageNum<pageCount){ pageNum++; renderPage(); } });
+                })();
+              </script>
+            </div>
+          {% endwith %}
+        {% endif %}
+      {% endfor %}
     {% endif %}
 
     {% if not letters or only_image_letter %}
-    <div id="letter_upload_section" style="margin-top: 20px;">
-        <p><strong>Add Your Letter:</strong></p>
+      <p class="section-title" style="margin-top:18px;">Add Your Letter</p>
+      <div id="letter_upload_section" style="margin-top: 6px;">
         <p><label for="id_letter_type">Letter Type:</label> {{ letter_form.letter_type }}</p>
         {% if letter_form.non_field_errors %}
-        <div style="color:#b00020;margin:6px 0;">
-          {{ letter_form.non_field_errors.0 }}
-        </div>
-      {% endif %}
-      
+          <div style="color:#b00020;margin:6px 0;">
+            {{ letter_form.non_field_errors.0 }}
+          </div>
+        {% endif %}
+
         <div id="text_content_div" style="display:none;">
-            <label for="id_text_content">Text Content:</label><br>
-            {{ letter_form.text_content }}
+          <label for="id_text_content">Text Content:</label><br>
+          {{ letter_form.text_content }}
         </div>
 
         <div id="image_upload_div" style="display:none;">
-            <label for="images">Upload Images:</label><br>
-            <input type="file" name="images" multiple accept="image/*">
-          </div>
+          <label for="images">Upload Images:</label><br>
+          <input type="file" name="images" multiple accept="image/*">
+        </div>
 
         <div id="pdf_upload_div" style="display:none;">
-            <label for="id_pdf">Upload PDF:</label><br>
-            <input type="file" name="pdf" id="id_pdf" accept=".pdf,application/pdf">
-            {% if letter_form.pdf.errors %}
-              <div style="color:red; margin-top:5px;">{{ letter_form.pdf.errors.0 }}</div>
-            {% endif %}
-                    </div>
-    </div>
+          <label for="id_pdf">Upload PDF:</label><br>
+          <input type="file" name="pdf" id="id_pdf" accept=".pdf,application/pdf">
+          {% if letter_form.pdf.errors %}
+            <div style="color:red; margin-top:5px;">{{ letter_form.pdf.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
     {% endif %}
 
-    <button type="submit" class="btn btn-success">🔖 Save Changes</button>
-</form>
+    <div class="t-card-actions">
+      <button type="submit" class="btn btn-success">🔖 Save Changes</button>
+    </div>
+  </form>
+</div>
 
 <br>
 <a href="{% url 'view_profile' %}" class="btn btn-secondary">← Back to Profile</a>
+
 <script src="{% static 'js/city_autocomplete.js' %}?v={{ timestamp }}"></script>
 <script src="{% static 'js/profile_picture.js' %}"></script>
 
@@ -428,15 +517,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     checkIfNoImagesLeft();
-       // 👇 Paste this part here
-       document.getElementById('profile-form').addEventListener('submit', function (e) {
+    document.getElementById('profile-form').addEventListener('submit', function (e) {
         const textareas = document.querySelectorAll("textarea[name^='text_content_']");
         for (let textarea of textareas) {
             if (textarea.value.trim().length < MIN_CHARS || textarea.value.trim().length > MAX_CHARS) {
-    e.preventDefault();
-    alert(`❌ Letter text must be between ${MIN_CHARS} and ${MAX_CHARS} characters.`);
-    textarea.focus();
-    return false;
+                e.preventDefault();
+                alert(`❌ Letter text must be between ${MIN_CHARS} and ${MAX_CHARS} characters.`);
+                textarea.focus();
+                return false;
             }
         }
 
@@ -449,23 +537,23 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+
 <script>
   document.addEventListener('DOMContentLoaded', function() {
       const minSelect = document.getElementById('id_preferred_age_min');
       const maxSelect = document.getElementById('id_preferred_age_max');
-  
+
       function updateMaxOptions() {
           const minAge = parseInt(minSelect.value);
           Array.from(maxSelect.options).forEach(option => {
               const val = parseInt(option.value);
               option.disabled = val <= minAge;
           });
-          // Auto-select valid value if current value invalid
           if (parseInt(maxSelect.value) <= minAge) {
               maxSelect.value = "";
           }
       }
-  
+
       function updateMinOptions() {
           const maxAge = parseInt(maxSelect.value);
           Array.from(minSelect.options).forEach(option => {
@@ -476,7 +564,7 @@ document.addEventListener('DOMContentLoaded', function () {
               minSelect.value = "";
           }
       }
-  
+
       if (minSelect && maxSelect) {
           minSelect.addEventListener('change', updateMaxOptions);
           maxSelect.addEventListener('change', updateMinOptions);
@@ -484,45 +572,38 @@ document.addEventListener('DOMContentLoaded', function () {
           updateMinOptions();
       }
   });
-  </script>
-  
-  <script>
-    (function () {
-      const MIN = 300, MAX = 2000;
-    
-      function wireCounter(textarea) {
-        if (!textarea || textarea.dataset.counterReady) return;
-        textarea.dataset.counterReady = "1";
-        textarea.setAttribute('maxlength', String(MAX));
-        if (!textarea.getAttribute('rows')) textarea.setAttribute('rows', '6');
-    
-        const help = document.createElement('small');
-        help.style.display = 'block';
-        help.style.marginTop = '6px';
-        help.style.color = '#555';
-        help.innerHTML = `Minimum <strong>${MIN}</strong> characters, maximum <strong>${MAX}</strong>. <span class="count">0</span>/${MAX}`;
-        textarea.insertAdjacentElement('afterend', help);
-    
-        function update() {
-          const len = (textarea.value || '').trim().length;
-          help.querySelector('.count').textContent = String(len);
-          help.style.color = (len > 0 && len < MIN) ? '#b00020' : '#555';
-        }
-        textarea.addEventListener('input', update);
-        update();
+</script>
+
+<script>
+  (function () {
+    const MIN = 300, MAX = 2000;
+
+    function wireCounter(textarea) {
+      if (!textarea || textarea.dataset.counterReady) return;
+      textarea.dataset.counterReady = "1";
+      textarea.setAttribute('maxlength', String(MAX));
+      if (!textarea.getAttribute('rows')) textarea.setAttribute('rows', '6');
+
+      const help = document.createElement('small');
+      help.style.display = 'block';
+      help.style.marginTop = '6px';
+      help.style.color = '#555';
+      help.innerHTML = `Minimum <strong>${MIN}</strong> characters, maximum <strong>${MAX}</strong>. <span class="count">0</span>/${MAX}`;
+      textarea.insertAdjacentElement('afterend', help);
+
+      function update() {
+        const len = (textarea.value || '').trim().length;
+        help.querySelector('.count').textContent = String(len);
+        help.style.color = (len > 0 && len < MIN) ? '#b00020' : '#555';
       }
-    
-      // Existing text letters
-      document.querySelectorAll("textarea[name^='text_content_']").forEach(wireCounter);
-    
-      // New text letter (Add Your Letter)
-      const newText = document.getElementById('id_text_content');
-      if (newText) {
-        wireCounter(newText);
-      }
-    })();
-    </script>
-    
-    
-    
+      textarea.addEventListener('input', update);
+      update();
+    }
+
+    document.querySelectorAll("textarea[name^='text_content_']").forEach(wireCounter);
+    const newText = document.getElementById('id_text_content');
+    if (newText) wireCounter(newText);
+  })();
+</script>
+
 {% endblock %}
