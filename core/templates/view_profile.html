@@ -372,14 +372,26 @@
   {% endif %}
 
   <div class="t-card-actions">
+    {% if request.user.is_authenticated and not request.user.profile.active_event %}
+      <a href="{% url 'join_event' %}"
+         class="btn btn-secondary"
+         style="font-size:0.85rem;">
+        🎟️ Join event
+      </a>
+    {% endif %}
+
     <a href="https://donate.stripe.com/test_aFa00l0IT2tg8z0bw7ao801"
        target="_blank"
        class="btn btn-primary">
       💖 Support the Project
     </a>
-    <a href="{% url 'edit_profile' %}" class="btn btn-secondary">✏️ Edit Profile</a>
+
+    <a href="{% url 'edit_profile' %}" class="btn btn-secondary">
+      ✏️ Edit Profile
+    </a>
   </div>
 </div>
+
 
 <hr style="margin: 25px 0;">
 
