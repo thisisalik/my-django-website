@@ -975,6 +975,7 @@ def likes_received(request):
     ).exclude(
         from_profile__id__in=matched_ids
     )
+    likes = likes.order_by('-timestamp')[:1]
 
 
     # ✅ Count unread messages and unseen matches (for 💬 badge)
