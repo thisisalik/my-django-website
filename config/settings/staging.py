@@ -25,6 +25,11 @@ SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 <<<<<<< HEAD
 CSRF_COOKIE_SECURE = True
+<<<<<<< HEAD
 =======
 CSRF_COOKIE_SECURE = True
+>>>>>>> staging
+=======
+WHITENOISE_AUTOREFRESH = True
+WHITENOISE_USE_FINDERS = True
 >>>>>>> staging

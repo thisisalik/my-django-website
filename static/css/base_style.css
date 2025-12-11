@@ -1,0 +1,327 @@
+/* ✅ Remove full-height stretch and flex layout */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: auto;
+}
+
+/* ✅ Base styling */
+body {
+  font-family: system-ui, sans-serif;
+  font-size: clamp(16px, 2.3vw, 18px);
+  line-height: 1.5;
+  /* soft turtle-ish gradient like register page */
+  background: radial-gradient(circle at top, #e6f6f0 0, #f9fbff 55%, #ffffff 100%);
+  display: block;
+}
+
+/* ✅ Layout container */
+.container {
+  width: 92%;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 16px 10px 24px;   /* small padding at bottom */
+  box-sizing: border-box;
+  /* removed min-height so there is no big white gap above Logout */
+}
+
+/* ✅ Section spacing */
+.section {
+  margin-bottom: 16px;
+}
+
+/* ✅ Letter box */
+.letter-card {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background-color: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+/* ✅ Link + button style (generic) */
+.button,
+button {
+  display: inline-block;
+  font-size: 1rem;
+  padding: 8px 12px;
+  margin: 6px 4px;
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background-color: #007bff;
+  color: white;
+}
+
+/* === Global form controls – match register page === */
+
+form input[type="text"],
+form input[type="email"],
+form input[type="password"],
+form select,
+form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  padding: 9px 11px;
+  margin-top: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background-color: #fff;
+}
+
+form textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+/* primary pill button used on register + can be reused elsewhere */
+.primary-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(37,99,235,0.3);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ✅ Mobile tweaks */
+@media (max-width: 600px) {
+  h1, h2, h3 {
+    font-size: 18px;
+  }
+
+  .button, button {
+    font-size: 14px;
+    padding: 7px 10px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 14px;
+  }
+
+  .letter-card {
+    padding: 10px;
+  }
+}
+
+/* ✅ Chat list container */
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* ✅ Chat thread form wrapper */
+.chat-thread {
+  padding: 0;
+  margin: 0;
+}
+
+/* ✅ Chat thread styled button */
+.chat-thread-button {
+  display: block;
+  width: 100%;
+  border: none;
+  background: #f5f5f5;
+  padding: 12px 16px;
+  text-align: left;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.chat-thread-button:hover {
+  background: #eaf2ff;
+}
+
+/* ✅ Darker style for unread chats */
+.chat-thread-button.unread {
+  background-color: #d8eefe;
+}
+
+/* ✅ Header inside chat thread */
+.chat-thread-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 17px;
+  margin-bottom: 6px;
+}
+
+/* ✅ User name style */
+.chat-name {
+  color: #222;
+  font-weight: 600;
+}
+
+/* ✅ Unread badge style */
+.chat-unread-badge {
+  font-size: 15px;
+  color: #dc3545;
+}
+
+/* ✅ Message preview snippet */
+.chat-thread-snippet {
+  font-size: 15px;
+  color: #444;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Compact profile + PDF viewer tweaks --- */
+
+/* Tighter container on desktop so content fits higher on the screen */
+.container { max-width: 640px; }
+
+/* Headings + section rhythm */
+h2 { margin: 8px 0 10px; }
+hr { margin: 14px 0; }
+
+/* Two-column info grid for profile rows (replaces stacked <p>s) */
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 18px;
+  align-items: baseline;
+}
+.profile-grid .label {
+  color: #666;
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+/* Card look for the letter area */
+.letter-card {
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+  box-shadow: 0 1px 10px rgba(0,0,0,.03);
+}
+
+/* Letter card */
+.letter-card {
+  background:#fff;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04);
+  padding:14px 16px;
+  margin:10px 0 16px;
+}
+
+.letter-meta {
+  font-size:12px;
+  color:#6b7280;
+  margin-bottom:8px;
+}
+
+.letter-body {
+  font-size:15.5px;
+  line-height:1.65;
+  color:#111827;
+  /* key: make long letters tidy */
+  max-height: 36vh;              /* desktop */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 6px;            /* room for scrollbar */
+  white-space: pre-wrap;         /* preserve new lines if not using linebreaksbr */
+  overflow-wrap: anywhere;       /* prevent layout breaks on long words */
+}
+
+/* Mobile/tablet tweak */
+@media (max-width: 768px) {
+  .letter-body { max-height: 45vh; }
+}
+
+/* Optional: subtle fade at bottom to hint there's more */
+.letter-scroll-hint {
+  position: relative;
+}
+.letter-scroll-hint::after {
+  content:"";
+  position:absolute; left:0; right:0; bottom:0; height:30px;
+  pointer-events:none;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
+}
+.letter-body--expanded { max-height:none; }
+
+/* === Generic card for forms / content === */
+
+.t-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin: 16px 0;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+/* card header title line (optional helper) */
+.t-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+/* row at bottom of card with buttons */
+.t-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* pill-style buttons helpers (used in login etc.) */
+.btn {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 9px 15px;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn-primary {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: #e5e7eb;
+  color: #111827;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+/* small tweak: on very small screens, reduce padding */
+@media (max-width: 600px) {
+  .t-card {
+    padding: 14px 14px;
+    margin: 12px 0;
+  }
+}

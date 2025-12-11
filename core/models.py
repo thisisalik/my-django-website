@@ -19,12 +19,34 @@ class Profile(models.Model):
     ]
     connection_types = models.JSONField(default=list, blank=True)
 
-    only_same_city = models.BooleanField(default=False)  # ✅ Add this line
+    only_same_city = models.BooleanField(default=False)
+
+    # 🔹 CURRENT active event this user belongs to (if any)
+    active_event = models.ForeignKey(
+        'Event',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='profiles',
+    )
+
+    # 🔹 When True → ONLY show letters from active_event in browse view
+    limit_to_event_pool = models.BooleanField(default=False)
 
     def get_connection_type_labels(self):
         label_map = dict(self.CONNECTION_CHOICES)
         return [label_map.get(c, c) for c in self.connection_types]
+    
 from cloudinary_storage.storage import RawMediaCloudinaryStorage
+
+class Event(models.Model):
+    name = models.CharField(max_length=255)
+    join_code = models.CharField(max_length=20, unique=True)  # e.g. "NOV27", "SPRING25"
+    is_active = models.BooleanField(default=True)  # ✅ NEW: lets you turn events on/off
+
+    def __str__(self):
+        return self.name
+
 
 class Letter(models.Model):
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE)
@@ -38,6 +60,13 @@ class Letter(models.Model):
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='letters',
+    )
 
 class LetterImage(models.Model):
     letter = models.ForeignKey(Letter, on_delete=models.CASCADE, related_name='images')

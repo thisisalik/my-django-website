@@ -1,5 +1,58 @@
 {% extends 'base.html' %}
+
 {% block content %}
+<style>
+  /* Page spacing */
+  h2 {
+    margin: 6px 0 10px;
+  }
+
+  #chat-list-container {
+    margin-top: 6px;
+  }
+
+  /* If your partial uses .chat-card (from earlier styling),
+     this will make it match the other cards (likes, profile, etc.). */
+  .chat-card {
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:18px;
+    box-shadow:0 8px 24px rgba(15,23,42,0.06);
+    padding:12px 14px;
+    margin:8px 0;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .chat-card-header {
+    font-weight:600;
+    margin-bottom:2px;
+  }
+
+  .chat-card-lastmsg {
+    font-size:0.9rem;
+    color:#4b5563;
+  }
+
+  .chat-card-actions {
+    margin-top:6px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  /* Small pill for "new match" or unread could use this class if present */
+  .chat-tag {
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:999px;
+    font-size:0.75rem;
+    background:#eef2ff;
+    color:#4338ca;
+  }
+</style>
+
 <h2>Your Chats 💬</h2>
 
 <div id="chat-list-container">
@@ -15,6 +68,7 @@
       });
   }
 
-  setInterval(refreshChatList, 5000);  // every 5 seconds
+  // keep behavior the same
+  setInterval(refreshChatList, 5000);
 </script>
 {% endblock %}

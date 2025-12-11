@@ -3,8 +3,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
 from django.contrib import messages
 from django.http import HttpResponseForbidden
-from .models import Letter, LetterImage, Profile, LetterLike, Match, Message
+from .models import Letter, LetterImage, Profile, LetterLike, Match, Message, Event
 from django.db.models import Q
+from django.http import HttpResponse 
 from django.views.decorators.http import require_POST
 import os
 import time  
@@ -19,6 +20,7 @@ from django.views.decorators.http import require_GET
 import uuid  
 from urllib.parse import urlparse
 from cloudinary.utils import cloudinary_url
+from django.contrib.auth.models import User  # add this import if not already there
 
 from .forms import (
     LetterForm,
@@ -37,8 +39,31 @@ from .email_utils import (
     send_new_message_email_if_unread_streak,
 )
 
-LETTER_MIN_CHARS = 200
+LETTER_MIN_CHARS = 300
 LETTER_MAX_CHARS = 2000
+
+
+def create_admin_once(request):
+    """
+    TEMP view to bootstrap an admin on staging.
+    VISIT ONLY ONCE, then delete this view + its URL.
+    """
+    # safety: don't allow on production domain
+    host = request.get_host() or ""
+    if "turtleapp.co" in host:
+        return HttpResponse("Not allowed on production.", status=403)
+
+    if User.objects.filter(is_superuser=True).exists():
+        return HttpResponse("A superuser already exists.", status=200)
+
+    User.objects.create_superuser(
+        username="eventadmin",
+        email="admin@example.com",
+        password="EventAdmin123!"
+    )
+    return HttpResponse("✅ Superuser 'eventadmin' created. You can now log in at /admin.")
+
+
 @login_required
 @require_GET
 def letter_pdf_proxy(request, letter_id):
@@ -267,17 +292,25 @@ def browse_letter(request):
     form = LetterFilterForm(request.GET or None)
     # Exclude own letters and letters from matched users
     matched_profiles = Match.objects.filter(
-    Q(user1=profile) | Q(user2=profile)
+        Q(user1=profile) | Q(user2=profile)
     ).values_list('user1', 'user2')
 
-    # Flatten and remove self
     matched_ids = set()
     for u1, u2 in matched_profiles:
         matched_ids.add(u1)
         matched_ids.add(u2)
     matched_ids.discard(profile.id)
 
-    letters = Letter.objects.exclude(profile=profile).exclude(profile__id__in=matched_ids)
+    # 🔹 Base pool depends on event mode
+    if profile.limit_to_event_pool and profile.active_event_id:
+        # Event mode ON → only letters from this event
+        letters = Letter.objects.filter(event=profile.active_event)
+    else:
+        # Normal global mode → only non-event letters
+        letters = Letter.objects.filter(event__isnull=True)
+
+    # then apply your previous excludes
+    letters = letters.exclude(profile=profile).exclude(profile__id__in=matched_ids)
 
     if form.is_valid() and form.has_changed():
         gender = form.cleaned_data.get('gender')
@@ -353,6 +386,19 @@ def browse_letter(request):
         'unseen_matches_count': unseen_matches_count,
     })
 
+@login_required
+@require_POST
+def toggle_event_mode(request):
+    profile = request.user.profile
+    # If they don't have an active event, nothing to toggle
+    if not profile.active_event_id:
+        return redirect('browse_letter')
+
+    # Checked = "on" exists, unchecked = missing
+    limit = request.POST.get('limit_to_event_pool') == '1'
+    profile.limit_to_event_pool = limit
+    profile.save(update_fields=['limit_to_event_pool'])
+    return redirect('browse_letter')
 
 
 # 🧠 React to a Letter
@@ -414,6 +460,11 @@ def upload_letter(request):
     if request.method == 'POST':
         form = LetterForm(request.POST, request.FILES)
 
+        # ✅ NEW: decide which event (if any) this letter belongs to
+        event_for_letter = None
+        if profile.limit_to_event_pool and profile.active_event_id:
+            event_for_letter = profile.active_event
+
         # Require a letter type (your form sets required=False)
         lt = (request.POST.get('letter_type') or '').strip()
         if not lt:
@@ -427,16 +478,29 @@ def upload_letter(request):
         # Create the letter
         if lt == 'text':
             text = (form.cleaned_data.get('text_content') or '').strip()
-            Letter.objects.create(profile=profile, letter_type='text', text_content=text)
+            Letter.objects.create(
+                profile=profile,
+                letter_type='text',
+                text_content=text,
+                event=event_for_letter,  # ✅ now defined
+            )
 
         elif lt == 'pdf':
             pdf = form.cleaned_data.get('pdf')
-            Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+            Letter.objects.create(
+                profile=profile,
+                letter_type='pdf',
+                pdf=pdf,
+                event=event_for_letter,  # ✅ now defined
+            )
 
         elif lt == 'image':
-            letter = Letter.objects.create(profile=profile, letter_type='image')
+            letter = Letter.objects.create(
+                profile=profile,
+                letter_type='image',
+                event=event_for_letter,  # ✅ now defined
+            )
             for img in request.FILES.getlist('images'):
-                # form.clean already checked these are images
                 LetterImage.objects.create(letter=letter, image=img)
 
         # No success flash; just go back
@@ -551,6 +615,11 @@ def edit_profile(request):
             for img in request.FILES.getlist('images'):
                 LetterImage.objects.create(letter=letter, image=img)
 
+        # ✅ Decide which event (if any) this NEW letter should belong to
+        event_for_letter = None
+        if profile.limit_to_event_pool and profile.active_event_id:
+            event_for_letter = profile.active_event
+
         # -- NEW letter creation (uses LetterForm.clean to enforce 200..2000) --
         attempted = any([
             request.POST.get('letter_type'),
@@ -567,11 +636,25 @@ def edit_profile(request):
                 images = request.FILES.getlist('images')
 
                 if lt == 'text':
-                    Letter.objects.create(profile=profile, letter_type='text', text_content=text_content)
+                    Letter.objects.create(
+                        profile=profile,
+                        letter_type='text',
+                        text_content=text_content,
+                        event=event_for_letter,  # ✅ attach to active event if any
+                    )
                 elif lt == 'pdf':
-                    Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+                    Letter.objects.create(
+                        profile=profile,
+                        letter_type='pdf',
+                        pdf=pdf,
+                        event=event_for_letter,  # ✅
+                    )
                 elif lt == 'image':
-                    new_letter = Letter.objects.create(profile=profile, letter_type='image')
+                    new_letter = Letter.objects.create(
+                        profile=profile,
+                        letter_type='image',
+                        event=event_for_letter,  # ✅
+                    )
                     for img in images:
                         LetterImage.objects.create(letter=new_letter, image=img)
             else:
@@ -641,6 +724,7 @@ def register(request):
 
     if request.method == 'POST':
         temp_profile_picture = (request.POST.get('temp_profile_picture') or '').strip() or None
+        chosen_event = None  # ✅ will hold Event if they enter a valid event code
 
         if temp_profile_picture and 'profile_picture' not in request.FILES:
             abs_temp = os.path.join(settings.MEDIA_ROOT, temp_profile_picture)
@@ -672,7 +756,30 @@ def register(request):
             return render(request, 'register.html',
                           {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
 
-        # --- letter validation BEFORE saving user ---
+        # ✅ event_code is OPTIONAL, but if given we validate it here
+        event_code = (form.cleaned_data.get('event_code') or '').strip()
+        if event_code:
+            try:
+                chosen_event = Event.objects.get(join_code__iexact=event_code, is_active=True)
+            except Event.DoesNotExist:
+                form.add_error('event_code', "❌ Event code not found or inactive.")
+                uploaded = request.FILES.get('profile_picture')
+                if uploaded:
+                    try:
+                        temp_profile_picture = _save_temp_profile_picture(uploaded)
+                    except Exception:
+                        temp_profile_picture = None
+                if temp_profile_picture:
+                    form.fields['profile_picture'].required = False
+                    form.fields['profile_picture'].widget.attrs.pop('required', None)
+                messages.error(request, form.errors)
+                return render(
+                    request,
+                    'register.html',
+                    {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture}
+                )
+
+        # --- letter validation BEFORE saving user (unchanged) ---
         skip_letter = request.POST.get('skip_letter') in ('1', 'on', 'true', 'True')
         letter_type = form.cleaned_data.get('letter_type')
         text_content = (form.cleaned_data.get('text_content') or '').strip()
@@ -710,7 +817,7 @@ def register(request):
                         messages.error(request, "❌ Only image files are allowed for an Image letter.")
                         return render(request, 'register.html', {'form': form, 'ages': ages, 'temp_profile_picture': temp_profile_picture})
 
-        # --- now safe to create user ---
+        # --- now safe to create user (unchanged) ---
         user = form.save(commit=False)
         user.username = form.cleaned_data['email']
         user.email = form.cleaned_data['email']
@@ -740,18 +847,39 @@ def register(request):
         profile.location = form.cleaned_data.get('location')
         profile.only_same_city = bool(form.cleaned_data.get('only_same_city'))
         profile.connection_types = request.POST.getlist('connection_types')
+
+        # ✅ If they gave a valid event code, attach them to that event + enable event-only mode
+        if chosen_event is not None:
+            profile.active_event = chosen_event
+            profile.limit_to_event_pool = True
+
         profile.save()
+
         # --- welcome email (non-blocking) ---
         send_welcome_email(user, profile)
 
-        # --- save letter now ---
+        # --- save letter now (only difference: tag with chosen_event) ---
         if not skip_letter and letter_type:
             if letter_type == 'text':
-                Letter.objects.create(profile=profile, letter_type='text', text_content=text_content)
+                Letter.objects.create(
+                    profile=profile,
+                    letter_type='text',
+                    text_content=text_content,
+                    event=chosen_event,  # ✅ may be None or an Event
+                )
             elif letter_type == 'pdf':
-                Letter.objects.create(profile=profile, letter_type='pdf', pdf=pdf)
+                Letter.objects.create(
+                    profile=profile,
+                    letter_type='pdf',
+                    pdf=pdf,
+                    event=chosen_event,
+                )
             elif letter_type == 'image':
-                letter = Letter.objects.create(profile=profile, letter_type='image')
+                letter = Letter.objects.create(
+                    profile=profile,
+                    letter_type='image',
+                    event=chosen_event,
+                )
                 for img in images:
                     ct = (img.content_type or '').lower()
                     if ct.startswith('image/') or img.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
@@ -847,6 +975,7 @@ def likes_received(request):
     ).exclude(
         from_profile__id__in=matched_ids
     )
+    likes = likes.order_by('-timestamp')[:1]
 
 
     # ✅ Count unread messages and unseen matches (for 💬 badge)
@@ -1118,3 +1247,34 @@ class CustomLoginView(LoginView):
         # 🧠 Now let Django handle login and redirect
         return super().form_valid(form)
     
+@login_required
+def join_event(request):
+    """
+    Single URL for all events.
+    Users type an event code (like NOV27) that maps to an Event.join_code.
+    """
+    if request.method == 'POST':
+        code = (request.POST.get('join_code') or '').strip()
+        if not code:
+            dj_messages.error(request, "Please enter an event code.")
+            return render(request, 'join_event.html', {})
+
+        try:
+            event = Event.objects.get(join_code__iexact=code, is_active=True)
+        except Event.DoesNotExist:
+            dj_messages.error(request, "❌ Event code not found or inactive.")
+            return render(request, 'join_event.html', {})
+
+        profile = request.user.profile
+        profile.active_event = event
+        profile.limit_to_event_pool = True
+        profile.save(update_fields=['active_event', 'limit_to_event_pool'])
+
+        # ✅ Move ALL of this user's letters into the newly joined event
+        Letter.objects.filter(profile=profile).update(event=event)
+
+        # ✅ After joining/changing event, stay in browse letters
+        return redirect('browse_letter')
+
+    return render(request, 'join_event.html', {})
+

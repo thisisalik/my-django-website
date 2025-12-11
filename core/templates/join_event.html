@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<h2>Join an event</h2>
+
+{# show any error messages from dj_messages.error #}
+{% if messages %}
+  {% for message in messages %}
+    {% if "error" in message.tags %}
+      <div style="padding:10px;border-radius:8px;margin:10px 0;
+                  background:#ffe8e8;color:#b00020;border:1px solid #f5b5b5;">
+        {{ message }}
+      </div>
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+<p>
+  Enter the event code you received at the in-person event.
+  This will switch you into that event’s pool and you’ll only see letters
+  from that event (as long as the checkbox is on).
+</p>
+
+<form method="post">
+  {% csrf_token %}
+  <label for="id_join_code">Event code:</label>
+  <input type="text" id="id_join_code" name="join_code"
+         value="{{ request.POST.join_code|default_if_none:'' }}"
+         autocomplete="off" />
+
+  <button type="submit" class="btn btn-primary" style="margin-left: 8px;">
+    Join event
+  </button>
+</form>
+
+<p style="margin-top: 20px;">
+  <a href="{% url 'browse_letter' %}">← Back to letters</a>
+</p>
+{% endblock %}
